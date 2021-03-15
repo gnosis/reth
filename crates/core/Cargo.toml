@@ -1,0 +1,22 @@
+# Copyright 2021 Gnosis Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "core"
+version = "1.0.0-alpha"
+authors = ["Karim Agha <karim.agha@gnosis.io>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# uint = "0.9"
+# fixed-hash = "0.7"
+ethereum-types = "0.11.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+keccak-hash = "0.7.0"
+rlp = "0.5.0"
+rustc-hex = "2.1.0"
+bytes = "1"
+crypto = { version="0.8.0", package = "parity-crypto", features=["publickey"] }

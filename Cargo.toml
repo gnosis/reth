@@ -1,0 +1,9 @@
+# Copyright 2021 Gnosis Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+[workspace]
+members = [
+    "crates/*",
+    "tools/*",
+    "bin/*"]
+default-members = ["bin/reth"]
