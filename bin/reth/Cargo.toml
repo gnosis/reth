@@ -10,10 +10,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-core = { path = "../core" }
-execution = { path = "../execution" }
-networking = { path = "../networking" }
-storage = { path = "../storage" }
-consensus = { path = "../consensus" }
+core = { path = "../../crates/core" }
+execution = { path = "../../crates/importer" }
+networking = { path = "../../crates/networking" }
+storage = { path = "../../crates/storage" }
+consensus = { path = "../../crates/consensus" }
 
 tokio = { version = "1.2", features = ["full"] }

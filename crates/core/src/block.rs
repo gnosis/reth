@@ -1,7 +1,7 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::Transaction;
+use crate::TransactionBase;
 use crate::{Address, Bloom, Keccak, U256};
 
 use serde::{Deserialize, Serialize};
@@ -30,9 +30,9 @@ pub struct BlockHeader {
 }
 
 /// https://ethereum.stackexchange.com/questions/268/ethereum-block-architecture
-#[derive(Debug, Eq, Clone, PartialEq, Serialize, Deserialize)]
+//#[derive(Debug, Eq, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Block {
   header: BlockHeader,
   ommers: Vec<Block>,
-  transactions: Vec<Transaction>,
+  transactions: Vec<TransactionBase>,
 }

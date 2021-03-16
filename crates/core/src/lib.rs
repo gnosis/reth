@@ -9,9 +9,15 @@ mod transaction;
 pub use ethereum_types::U256;
 
 // special purpose hashes
-pub use ethereum_types::{Address, Bloom, H256 as Keccak};
+pub use ethereum_types::{Address, Bloom, H256};
+
+pub type Keccak = H256;
+
+pub type Bytes = Vec<u8>;
+
+type BlockNumber = u64;
 
 // domain types
 pub use account::Account;
 pub use block::Block;
-pub use transaction::Transaction;
+pub use transaction::TransactionBase;

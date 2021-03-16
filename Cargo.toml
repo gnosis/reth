@@ -2,5 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [workspace]
-members = ["crates/*", "tools/*"]
-default-members = ["crates/oe"]
+members = [
+    "crates/*",
+    "tools/*",
+    "bin/*"]
+default-members = ["bin/reth"]

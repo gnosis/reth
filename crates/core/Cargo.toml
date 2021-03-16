@@ -15,4 +15,6 @@ edition = "2018"
 ethereum-types = "0.11.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde-rlp = "0.1"
+keccak-hash = "0.7.0"
+rlp = "0.5.0"
+crypto = { version="0.8.0", package = "parity-crypto", features=["publickey"] }

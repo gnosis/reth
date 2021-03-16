@@ -1,0 +1,21 @@
+[package]
+authors = ["draganrakita <dragan0rakita@gmail.com>"]
+description = "Library that schedules incoming blocks and implements protocols from ethereum"
+edition = "2018"
+license = "Apache-2.0"
+name = "reth-scheduler"
+version = "0.1.0"
+homepage = "https://github.com/gnosis/reth-scheduler"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ethereum-forkid = "0.3"
+num = "0.3"
+num-derive = "0.3"
+num-traits = "0.2"
+primitive-types = {version = "0.7.3", features = ["impl-rlp"]}
+rlp = "0.4"
+rlp-derive = "0.1.0"
+log = "0.4"
+simple_logger = "1.11"
