@@ -43,3 +43,4 @@ Protocol that we can support are http,websocket and ipc.
 
 - There is standardization effort to standardize all JSONRPC calls for Ethereum: https://github.com/ethereum-oasis/eth1.x-JSON-RPC-API-standard
 - JSONRPC implemented by OpenEthereum can be found here: https://openethereum.github.io/JSONRPC
+- Replace parity-ws with hyper: https://hyper.rs
