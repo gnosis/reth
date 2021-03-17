@@ -15,11 +15,11 @@ extern crate rlp_derive;
 extern crate log;
 
 pub mod block_manager;
+pub mod client_adapter;
+pub mod common_types;
 pub mod devp2p_adapter;
 pub mod scheduler;
 pub mod snapshot_manager;
 pub mod transaction_manager;
-pub mod client_adapter;
-pub mod common_types;
 
 pub use scheduler::Scheduler;

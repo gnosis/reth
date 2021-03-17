@@ -32,7 +32,12 @@ pub struct GetBlockHeaders {
 
 impl GetBlockHeaders {
     pub fn new(block_id: BlockId, max_headers: u64, skip: u64, reverse: bool) -> GetBlockHeaders {
-        GetBlockHeaders { block_id, max_headers, skip, reverse }
+        GetBlockHeaders {
+            block_id,
+            max_headers,
+            skip,
+            reverse,
+        }
     }
 }
 

@@ -1,8 +1,10 @@
 // Copyright 2020 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::protocol::{EthMessageId, MessageId, ProtocolId};
-use super::handshake::HandshakeInfo;
+use super::{
+    handshake::HandshakeInfo,
+    protocol::{EthMessageId, MessageId, ProtocolId},
+};
 use crate::devp2p_adapter::{adapter::Devp2pAdapter, PeerPenal};
 use std::{
     collections::{HashMap, HashSet},
@@ -36,7 +38,7 @@ pub struct InitialRequest {
 }
 
 impl InitialRequest {
-    pub fn new(message_id:EthMessageId, data: MessageData) -> Self {
+    pub fn new(message_id: EthMessageId, data: MessageData) -> Self {
         InitialRequest { message_id, data }
     }
 }
@@ -73,7 +75,7 @@ impl ErrorAct {
     }
 
     pub fn new_kick_generic<T>(reason: String) -> Result<T, ErrorAct> {
-        Err(ErrorAct{
+        Err(ErrorAct {
             penal: PeerPenal::Kick,
             reason: reason,
         })
@@ -247,7 +249,6 @@ impl PeerOrganizer {
         } else {
             info!("No free peer to schedule task {:?} to", &request);
         }
-
     }
 
     pub fn random_peer(&self) -> Option<PeerId> {

@@ -20,4 +20,4 @@ type BlockNumber = u64;
 // domain types
 pub use account::Account;
 pub use block::Block;
-pub use transaction::TransactionBase;
+pub use transaction::Transaction;

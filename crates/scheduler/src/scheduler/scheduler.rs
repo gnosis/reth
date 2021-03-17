@@ -9,9 +9,9 @@ use super::{
 use crate::{
     block_manager::BlockManager,
     client_adapter::{
-        Blockchain,
         client_info::{Client, Snapshot},
         headers_in_memory::HeadersInMemory,
+        Blockchain,
     },
     devp2p_adapter::{
         adapter::{Devp2pAdapter, Devp2pInbound},
@@ -192,28 +192,56 @@ impl Scheduler {
             }
             EthMessageId::NewBlockHashes => {
                 info!("Got NewBlockHashes message from {}", peer);
-                self.block_manager.lock().unwrap().api_new_block_hashes(peer, data);
+                self.block_manager
+                    .lock()
+                    .unwrap()
+                    .api_new_block_hashes(peer, data);
             }
             EthMessageId::Transactions => {}
             EthMessageId::GetBlockHeaders => {
                 info!("Responding peer {} with dummy BlockHeaders message", peer);
-                return self.block_manager.lock().unwrap().api_get_block_headers(peer, &data);
+                return self
+                    .block_manager
+                    .lock()
+                    .unwrap()
+                    .api_get_block_headers(peer, &data);
             }
             EthMessageId::BlockHeaders => {
                 info!("Got BlockHeaders message from {}", peer);
-                self.block_manager.lock().unwrap().process_block_headers(&data);
+                self.block_manager
+                    .lock()
+                    .unwrap()
+                    .process_block_headers(&data);
             }
             EthMessageId::GetBlockBodies => {
                 info!("Responding peer {} with dummy BlockBodies message", peer);
-                return self.block_manager.lock().unwrap().api_get_block_bodies(peer, &data);
+                return self
+                    .block_manager
+                    .lock()
+                    .unwrap()
+                    .api_get_block_bodies(peer, &data);
             }
             EthMessageId::BlockBodies => {
-                info!("Got BlockBodies message from {} with {} bytes", peer, data.len());
-                self.block_manager.lock().unwrap().process_block_bodies(&data);
+                info!(
+                    "Got BlockBodies message from {} with {} bytes",
+                    peer,
+                    data.len()
+                );
+                self.block_manager
+                    .lock()
+                    .unwrap()
+                    .process_block_bodies(&data);
             }
             EthMessageId::NewBlock => {
-                info!("Got NewBlock message from {} with {} bytes", peer, data.len());
-                self.block_manager.lock().unwrap().api_new_block_hashes(peer, data);
+                info!(
+                    "Got NewBlock message from {} with {} bytes",
+                    peer,
+                    data.len()
+                );
+                self.block_manager
+                    .lock()
+                    .unwrap()
+                    .api_new_block_hashes(peer, data);
             }
             // NewPooledTransactionHashes = 0x08, // eth/65 protocol
             // GetPooledTransactions = 0x09, // eth/65 protocol

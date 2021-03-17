@@ -82,7 +82,7 @@ impl ParityProtocolVersion {
     }
 }
 
-#[derive(FromPrimitive,Debug,Copy,Clone)]
+#[derive(FromPrimitive, Debug, Copy, Clone)]
 pub enum EthMessageId {
     Status = 0x00,
     NewBlockHashes = 0x01,
@@ -105,12 +105,12 @@ impl EthMessageId {
     pub fn is_response(&self) -> bool {
         match self {
             Self::BlockHeaders | Self::BlockBodies | Self::Receipts => true,
-            _ => false
+            _ => false,
         }
     }
 }
 
-#[derive(FromPrimitive,Debug, Copy,Clone)]
+#[derive(FromPrimitive, Debug, Copy, Clone)]
 pub enum ParityMessageId {
     // Snapshot related id/s
     GetSnapshotManifest = 0x11,
@@ -120,17 +120,16 @@ pub enum ParityMessageId {
     ConsensusData = 0x15,
 }
 
-
 impl ParityMessageId {
     pub fn is_response(&self) -> bool {
         match self {
             Self::SnapshotManifest | Self::SnapshotData => true,
-            _ => false
+            _ => false,
         }
     }
 }
 
-#[derive(Debug,Copy,Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum MessageId {
     Eth(EthMessageId),
     Parity(ParityMessageId),
