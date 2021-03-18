@@ -1,13 +1,11 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use serde;
-
-pub struct Serializer {
+pub struct EthereumRlpSerializer {
     stream: rlp::RlpStream,
 }
 
-impl serde::Serializer for Serializer {
+impl serde::Serializer for EthereumRlpSerializer {
     type Ok = ();
 
     type Error = crate::error::ErrorKind;
@@ -32,19 +30,19 @@ impl serde::Serializer for Serializer {
     }
 
     fn serialize_i8(self, v: i8) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        unimplemented!("ethereum rlp does not support signed integers");
     }
 
     fn serialize_i16(self, v: i16) -> Result<Self::Ok, Self::Error> {
-        todo!()
+      unimplemented!("ethereum rlp does not support signed integers");
     }
 
     fn serialize_i32(self, v: i32) -> Result<Self::Ok, Self::Error> {
-        todo!()
+      unimplemented!("ethereum rlp does not support signed integers");
     }
 
     fn serialize_i64(self, v: i64) -> Result<Self::Ok, Self::Error> {
-        todo!()
+      unimplemented!("ethereum rlp does not support signed integers");
     }
 
     fn serialize_u8(mut self, v: u8) -> Result<Self::Ok, Self::Error> {
@@ -67,15 +65,15 @@ impl serde::Serializer for Serializer {
     }
 
     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
-        todo!()
+      unimplemented!("ethereum rlp does not support floating points");
     }
 
     fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error> {
-        todo!()
+      unimplemented!("ethereum rlp does not support floating points");
     }
 
     fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.serialize_u8(v as u8)
     }
 
     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
@@ -87,8 +85,9 @@ impl serde::Serializer for Serializer {
         Ok(())
     }
 
-    fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
-        todo!()
+    fn serialize_none(mut self) -> Result<Self::Ok, Self::Error> {
+        self.stream.append_empty_data();
+        Ok(())
     }
 
     fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
