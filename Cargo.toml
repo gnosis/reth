@@ -6,4 +6,4 @@ members = [
     "crates/*",
     "tools/*",
     "bin/*"]
-default-members = ["bin/reth"]
+default-members = ["bin/reth", "crates/*", "bin/*"]
