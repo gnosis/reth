@@ -35,8 +35,8 @@ impl Default for TypePayload {
 impl PayloadTrait for TypePayload {
     fn encode(tx: &Transaction, for_signature: bool) -> Vec<u8> {
         match tx.txtype() {
-            TxType::Legacy => LegacyPayload::encode(tx,for_signature),
-            TxType::AccessList => AccessListPayload::encode(tx,for_signature),
+            TxType::Legacy => LegacyPayload::encode(tx, for_signature),
+            TxType::AccessList => AccessListPayload::encode(tx, for_signature),
         }
     }
 

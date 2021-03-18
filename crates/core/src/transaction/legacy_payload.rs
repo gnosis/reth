@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{
-    signature::replay_protection,
-    signature::{SigVLegacy, Signature},
+    signature::{replay_protection, SigVLegacy, Signature},
     type_payload::{PayloadTrait, TypePayload},
     Transaction,
 };
@@ -11,9 +10,7 @@ use crate::U256;
 use keccak_hash::keccak;
 use rlp::{self, DecoderError, Rlp, RlpStream};
 
-/// A transaction (formally, T) is a
-/// single cryptographically-signed instruction constructed by
-/// an actor externally to the scope of Ethereum
+/// Field used in legacy transaction
 #[derive(Debug, Clone, Default)]
 pub struct LegacyPayload {
     /// The number of Wei to pay the network for unit of gas.

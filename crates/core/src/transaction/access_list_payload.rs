@@ -1,6 +1,8 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
-use super::{type_payload::PayloadTrait, LegacyPayload, Signature, Transaction, TxType, TypePayload};
+use super::{
+    type_payload::PayloadTrait, LegacyPayload, Signature, Transaction, TxType, TypePayload,
+};
 use crate::{Address, Keccak};
 use keccak_hash::keccak;
 use rlp::{DecoderError, Rlp, RlpStream};
@@ -8,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Default)]
 pub struct AccessListPayload {
-    pub legacy_data: LegacyPayload,
+    pub legacy_payload: LegacyPayload,
     pub access_list: AccessList,
 }
 
@@ -28,6 +30,13 @@ impl AccessListItem {
             storage_keys,
         }
     }
+    pub fn address(&self) -> &Address {
+        &self.address
+    }
+
+    pub fn storage_keys(&self) -> &[Keccak] {
+        &self.storage_keys
+    }
 }
 
 impl PayloadTrait for AccessListPayload {
@@ -43,7 +52,7 @@ impl PayloadTrait for AccessListPayload {
                 .expect("ChainId should allways be present in new transaction types"),
         );
         rlp.append(&tx.nonce);
-        rlp.append(&data.legacy_data.gas_price);
+        rlp.append(&data.legacy_payload.gas_price);
         rlp.append(&tx.gas_limit);
         rlp.append(&tx.to);
         rlp.append(&tx.value);
@@ -105,7 +114,7 @@ impl PayloadTrait for AccessListPayload {
         // and here we create UnverifiedTransaction and calculate its hash
         Ok(Transaction::new(
             TypePayload::AccessList(AccessListPayload {
-                legacy_data: LegacyPayload { gas_price },
+                legacy_payload: LegacyPayload { gas_price },
                 access_list,
             }),
             signature,
