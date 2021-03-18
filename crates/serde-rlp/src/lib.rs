@@ -8,6 +8,7 @@ pub mod ser;
 pub use error::Result;
 
 use ser::EthereumRlpSerializer;
+use de::EthereumRlpDeserializer;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 pub fn serialize<E>(object: &E) -> Result<Vec<u8>>
@@ -23,7 +24,8 @@ pub fn deserialize<'a, T>(bytes: &'a [u8]) -> Result<T>
 where
     T: Deserialize<'a>,
 {
-    todo!();
+    let mut deserializer = EthereumRlpDeserializer::from_slice(bytes);
+    Ok(T::deserialize(&mut deserializer)?)
 }
 
 pub fn deserialize_from<R, T>(reader: R) -> Result<T>

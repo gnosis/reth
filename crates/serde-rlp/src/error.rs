@@ -36,3 +36,12 @@ impl serde::ser::Error for ErrorKind {
         todo!()
     }
 }
+
+impl serde::de::Error for ErrorKind {
+    fn custom<T>(msg: T) -> Self
+    where
+        T: Display,
+    {
+        todo!()
+    }
+}
