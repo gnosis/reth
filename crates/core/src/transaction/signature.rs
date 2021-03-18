@@ -1,5 +1,5 @@
-// Copyright 2021 Gnosis Ltd.
-// SPDX-License-Identifier: Apache-2.0
+/// Copyright 2021 Gnosis Ltd.
+/// SPDX-License-Identifier: Apache-2.0
 use super::*;
 use crypto::publickey::{self, public_to_address, recover, Signature as CryptoSig};
 use ethereum_types::{Address, BigEndianHash, Public, H256, U256};
@@ -52,6 +52,16 @@ impl Signature {
         let public = recover(&self.into(), &hash)?;
         let address = public_to_address(&public);
         Ok((address, public))
+    }
+}
+
+impl Default for Signature {
+    fn default() -> Signature {
+        Signature {
+            v: 4,
+            r: 0.into(),
+            s: 0.into(),
+        }
     }
 }
 
