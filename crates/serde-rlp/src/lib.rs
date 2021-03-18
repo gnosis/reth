@@ -7,13 +7,16 @@ pub mod ser;
 
 pub use error::Result;
 
+use ser::EthereumRlpSerializer;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 pub fn serialize<E>(object: &E) -> Result<Vec<u8>>
 where
-    E: Serialize,
+    E: Serialize + ?Sized,
 {
-    todo!();
+    let mut serializer = EthereumRlpSerializer::new();
+    object.serialize(&mut serializer)?;
+    Ok(serializer.finalize())
 }
 
 pub fn deserialize<'a, T>(bytes: &'a [u8]) -> Result<T>
@@ -32,30 +35,4 @@ where
 }
 
 #[cfg(test)]
-mod tests {
-    use serde::{Deserialize, Serialize};
-
-    #[derive(Debug, Serialize, Deserialize)]
-    struct Person {
-        first_name: String,
-        last_name: String,
-        age: u64,
-    }
-
-    #[test]
-    fn struct_serde_rlp_sanity_test() {
-        let original = Person {
-            first_name: "first".to_owned(),
-            last_name: "last".to_owned(),
-            age: 99,
-        };
-
-        let bytes = super::serialize(&original).unwrap();
-
-        let reconstructed: Person = super::deserialize(&bytes).unwrap();
-
-        assert_eq!(reconstructed.first_name, "first");
-        assert_eq!(reconstructed.last_name, "last");
-        assert_eq!(reconstructed.age, 99);
-    }
-}
+mod tests;
