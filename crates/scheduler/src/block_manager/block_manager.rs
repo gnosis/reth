@@ -9,26 +9,33 @@ use crate::{
     block_manager::rlp_en_de::{
         decode_block_bodies, decode_get_block_bodies, decode_get_block_headers,
     },
-    client_adapter::Blockchain,
-    common_types::{BlockBody, BlockId, GetBlockHeaders},
-    devp2p_adapter::PeerPenal,
+    common_types::GetBlockHeaders,
     scheduler::{
         peer_organizer::{ErrorAct, InitialRequest, PeerId, Task},
-        protocol::{EthMessageId, MessageId, ProtocolId},
+        protocol::{EthMessageId, MessageId},
         PeerOrganizer,
     },
 };
-use primitive_types::H256;
+use core::{BlockBody, BlockId, H256};
+use interfaces::{
+    blockchain::BlockchainReadOnly,
+    devp2p::{PeerPenal, ProtocolId},
+    importer::Importer,
+};
 use std::sync::{Arc, Mutex};
 
 pub struct BlockManager {
-    chain: Arc<Mutex<dyn Blockchain + Send + Sync>>,
+    chain: Arc<dyn BlockchainReadOnly>,
+    importer: Arc<dyn Importer>,
 }
 
 //ALL APIs
 impl BlockManager {
-    pub fn new(chain: Arc<Mutex<dyn Blockchain + Send + Sync>>) -> Arc<Mutex<Self>> {
-        Arc::new(Mutex::new(BlockManager { chain }))
+    pub fn new(
+        chain: Arc<dyn BlockchainReadOnly>,
+        importer: Arc<dyn Importer>,
+    ) -> Arc<Mutex<Self>> {
+        Arc::new(Mutex::new(BlockManager { chain, importer }))
     }
 
     fn request_block_headers(&self) -> InitialRequest {
@@ -49,7 +56,7 @@ impl BlockManager {
 
     pub fn is_syncing(&self) -> bool {
         // TODO implement sync instead of this test request
-        self.chain.lock().unwrap().best_block_header().is_none()
+        self.chain.best_header().is_none()
     }
 
     pub fn next_sync_task(&self) -> Option<InitialRequest> {
@@ -79,7 +86,12 @@ impl BlockManager {
                 *peer,
                 ProtocolId::Eth,
                 MessageId::Eth(EthMessageId::BlockHeaders),
-                encode_block_headers(&self.chain.lock().unwrap().block_headers(request)),
+                encode_block_headers(&self.chain.header_request(
+                    request.block_id,
+                    request.max_headers,
+                    request.skip,
+                    request.reverse,
+                )),
             )),
             Err(err) => ErrorAct::new_kick_generic::<Task>(format!(
                 "Invalid GetBlockHeaders request: {}",
@@ -91,7 +103,7 @@ impl BlockManager {
     fn retrieve_block_bodies(&self, hashes: &[H256]) -> Vec<BlockBody> {
         let mut bodies = vec![];
         for ref hash in hashes {
-            if let Some(body) = self.chain.lock().unwrap().block_body(hash) {
+            if let Some(body) = self.chain.body(hash) {
                 bodies.push(body);
             }
         }
@@ -119,7 +131,8 @@ impl BlockManager {
             Ok(headers) => {
                 info!("Decoded block headers: {:?}", headers);
                 for ref header in headers {
-                    self.chain.lock().unwrap().import_block_header(header);
+                    // TODO should be in importer and only when full block is assembled
+                    //self.importerlock().unwrap().import_block_header(header);
                 }
             }
             Err(err) => error!("Could not decode block header: {}", err),
@@ -130,7 +143,8 @@ impl BlockManager {
         match decode_block_bodies(&data) {
             Ok(bodies) => {
                 for ref body in bodies {
-                    self.chain.lock().unwrap().import_block_body(body);
+                    // TODO should be in importer and only when full block is asembled
+                    //self.chain.lock().unwrap().import_block_body(body);
                 }
             }
             Err(err) => error!("Could not decode block bodies: {}", err),

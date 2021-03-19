@@ -4,20 +4,17 @@
 use super::{
     handshake::Handshake,
     peer_organizer::{ErrorAct, PeerCapability, PeerId, PeerOrganizer, Task, TaskType},
-    protocol::{EthMessageId, MessageId, ParityMessageId, ProtocolId},
+    protocol::{EthMessageId, MessageId, ParityMessageId},
 };
-use crate::{
-    block_manager::BlockManager,
-    client_adapter::{
-        client_info::{Client, Snapshot},
-        headers_in_memory::HeadersInMemory,
-        Blockchain,
-    },
-    devp2p_adapter::{
-        adapter::{Devp2pAdapter, Devp2pInbound},
-        PeerPenal,
-    },
+use crate::{block_manager::BlockManager, client_adapter::headers_in_memory::HeadersInMemory};
+
+use interfaces::{
+    blockchain::BlockchainReadOnly,
+    devp2p::{Adapter as Devp2pAdapter, Inbound as Devp2pInbound, PeerPenal, ProtocolId},
+    importer::{Importer, ImporterStatus},
+    snapshot::Snapshot,
 };
+
 use log::*;
 use std::{
     sync::{
@@ -40,7 +37,7 @@ pub struct Scheduler {
     state: Mutex<SchedulerState>,
 
     peer_organizer: Arc<Mutex<PeerOrganizer>>,
-    client: Arc<dyn Client>,
+    importer: Arc<dyn Importer>,
     snapshot: Arc<dyn Snapshot>,
 
     block_manager: Arc<Mutex<BlockManager>>,
@@ -66,14 +63,15 @@ pub enum LoopMsg {
 impl Scheduler {
     pub fn new(
         devp2p: Box<dyn Devp2pAdapter>,
-        client: Arc<dyn Client>,
+        blockchain: Arc<dyn BlockchainReadOnly>,
+        importer: Arc<dyn Importer>,
         snapshot: Arc<dyn Snapshot>,
     ) -> Arc<Scheduler> {
         let devp2p = Arc::new(devp2p);
         let (tx, rx) = channel::<LoopMsg>();
         let chain = Arc::new(Mutex::new(HeadersInMemory::new()));
         let peer_organizer = PeerOrganizer::new(devp2p.clone());
-        let block_manager = BlockManager::new(chain);
+        let block_manager = BlockManager::new(blockchain, importer.clone());
         let org = Arc::new(Scheduler {
             peer_organizer: peer_organizer,
             state: Mutex::new(SchedulerState::WaitingPeer),
@@ -81,7 +79,7 @@ impl Scheduler {
             block_manager: block_manager,
             main_loop_trigger: Mutex::new(tx),
             thread_handle: Mutex::new(None),
-            client,
+            importer,
             snapshot,
         });
         let org_exec = org.clone();
@@ -319,7 +317,7 @@ impl Devp2pInbound for Scheduler {
     }
     /// Called when new peer is connected. Only called when peer supports the same protocol.
     fn connected(&self, peer: &PeerId, capability: &PeerCapability) {
-        let client_status = self.client.status();
+        let client_status = self.importer.status();
         let snapshot_manifest_status = self.snapshot.manifest_status();
         let task_id = Task::new_id();
         info!("Peer connected with capa:{:?}", capability);

@@ -1,23 +1,6 @@
 // Copyright 2020 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-pub type ProtocolIdType = [u8; 3];
-
-#[derive(Debug, Eq, PartialEq, Hash, Copy, Clone)]
-pub enum ProtocolId {
-    Parity,
-    Eth,
-}
-
-impl ProtocolId {
-    pub fn to_protocol_type(self) -> ProtocolIdType {
-        match self {
-            Self::Parity => *b"par",
-            Self::Eth => *b"eth",
-        }
-    }
-}
-
 /// ETH protocol version related protocol
 #[derive(PartialEq)]
 pub enum EthProtocolVersion {
