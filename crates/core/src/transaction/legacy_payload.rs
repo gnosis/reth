@@ -33,7 +33,7 @@ impl PayloadTrait for LegacyPayload {
         rlp.append(&tx.value);
         rlp.append(&tx.data);
         if for_signature {
-            if let Some(n) = tx.chain_id() {
+            if let Some(n) = tx.chain_id {
                 rlp.append(&n);
                 rlp.append(&0u8);
                 rlp.append(&0u8);

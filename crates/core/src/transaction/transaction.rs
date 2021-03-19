@@ -19,14 +19,8 @@ pub struct Transaction {
     /// specific data related to type. In future if some of field from standard transaction are removed
     /// it needs to be moved to TypePayload for support for older tx.
     pub type_payload: TypePayload,
-    /// signature of transaction
-    signature: Signature,
     /// replay protected chain_id
-    chain_id: Option<ChainId>,
-    /// hash of transaction
-    hash: H256,
-    /// extracted public key from signature.
-    author: Option<Author>,
+    pub chain_id: Option<ChainId>,
     /// The number of transactions sent by the sender.
     pub nonce: U64,
     /// The maximum amount of gas to be used in while executing a transaction
@@ -38,6 +32,12 @@ pub struct Transaction {
     /// Byte array specifying the input data of the message call or
     /// for contract creation:  EVM-code for the account initialisation procedure
     pub data: Bytes,
+    /// signature of transaction
+    signature: Signature,
+    /// hash of transaction
+    hash: H256,
+    /// extracted public key from signature.
+    author: Option<Author>,
 }
 
 impl Transaction {
@@ -86,22 +86,16 @@ impl Transaction {
         self.hash = keccak(&*TypePayload::encode(self, false));
     }
 
-    pub fn author(&self) -> Option<Author> {
-        self.author
-    }
-
-    pub fn type_payload(&self) -> &TypePayload {
-        &self.type_payload
-    }
-
-    pub fn chain_id(&self) -> Option<ChainId> {
-        self.chain_id
-    }
     pub fn signature(&self) -> &Signature {
         &self.signature
     }
+
     pub fn hash(&self) -> H256 {
         self.hash
+    }
+
+    pub fn author(&self) -> Option<Author> {
+        self.author
     }
 
     pub fn txtype(&self) -> TxType {
@@ -312,7 +306,7 @@ mod tests {
             tx.author().unwrap().0
         );
         assert_eq!(*keypair.public(), tx.author().unwrap().1);
-        assert_eq!(tx.chain_id(), None);
+        assert_eq!(tx.chain_id, None);
     }
 
     #[test]
@@ -339,7 +333,7 @@ mod tests {
             tx.author().unwrap().0
         );
         assert_eq!(*keypair.public(), tx.author().unwrap().1);
-        assert_eq!(tx.chain_id(), None);
+        assert_eq!(tx.chain_id, None);
     }
 
     #[test]
@@ -374,7 +368,7 @@ mod tests {
             tx.author().unwrap().0
         );
         assert_eq!(*keypair.public(), tx.author().unwrap().1);
-        assert_eq!(tx.chain_id(), Some(10));
+        assert_eq!(tx.chain_id, Some(10));
     }
 
     #[test]
@@ -393,7 +387,7 @@ mod tests {
             tx.author().unwrap().0,
             H160::from_str("641c5d790f862a58ec7abcfd644c0442e9c201b3").unwrap()
         );
-        assert_eq!(tx.chain_id(), Some(3));
+        assert_eq!(tx.chain_id, Some(3));
         assert_eq!(tx.v(), U64::from_str("2a").unwrap().as_u64());
         assert_eq!(
             tx.signature.s,
@@ -443,7 +437,7 @@ mod tests {
             H160::from_str("aaec86394441f915bce3e6ab399977e9906f3b69").unwrap()
         );
         assert_eq!(tx.author().unwrap().1, Public::from_str("91201f5b4d7739ce3030e17779e7b2ad5190cb3d61639bcd40ba24e098df7567e834b483858ccda7ff9a760b6da7adbe126d2e04b9b3ca7e071b43d846cd2378").unwrap());
-        assert_eq!(tx.chain_id(), Some(5));
+        assert_eq!(tx.chain_id, Some(5));
         assert_eq!(tx.v(), U64::from_str("0").unwrap().as_u64());
         assert_eq!(
             tx.signature.s,

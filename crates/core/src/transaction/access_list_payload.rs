@@ -48,7 +48,7 @@ impl PayloadTrait for AccessListPayload {
         let mut rlp = RlpStream::new();
         rlp.begin_unbounded_list();
         rlp.append(
-            &tx.chain_id()
+            &tx.chain_id
                 .expect("ChainId should allways be present in new transaction types"),
         );
         rlp.append(&tx.nonce);
