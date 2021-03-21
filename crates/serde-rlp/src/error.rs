@@ -44,7 +44,7 @@ impl serde::ser::Error for ErrorKind {
     where
         T: Display,
     {
-        todo!()
+        ErrorKind::Custom(msg.to_string()).into()
     }
 }
 

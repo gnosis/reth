@@ -8,7 +8,7 @@ pub(crate) struct EthereumRlpSerializer {
 impl EthereumRlpSerializer {
     pub fn new() -> Self {
         EthereumRlpSerializer {
-            stream: rlp::RlpStream::new()
+            stream: rlp::RlpStream::new(),
         }
     }
 
@@ -39,15 +39,15 @@ impl<'a> serde::Serializer for &'a mut EthereumRlpSerializer {
     }
 
     fn serialize_i16(self, _: i16) -> Result<Self::Ok, Self::Error> {
-      unimplemented!("ethereum rlp does not support signed integers");
+        unimplemented!("ethereum rlp does not support signed integers");
     }
 
     fn serialize_i32(self, _: i32) -> Result<Self::Ok, Self::Error> {
-      unimplemented!("ethereum rlp does not support signed integers");
+        unimplemented!("ethereum rlp does not support signed integers");
     }
 
     fn serialize_i64(self, _: i64) -> Result<Self::Ok, Self::Error> {
-      unimplemented!("ethereum rlp does not support signed integers");
+        unimplemented!("ethereum rlp does not support signed integers");
     }
 
     fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
@@ -70,11 +70,11 @@ impl<'a> serde::Serializer for &'a mut EthereumRlpSerializer {
     }
 
     fn serialize_f32(self, _: f32) -> Result<Self::Ok, Self::Error> {
-      unimplemented!("ethereum rlp does not support floating points");
+        unimplemented!("ethereum rlp does not support floating points");
     }
 
     fn serialize_f64(self, _: f64) -> Result<Self::Ok, Self::Error> {
-      unimplemented!("ethereum rlp does not support floating points");
+        unimplemented!("ethereum rlp does not support floating points");
     }
 
     fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
@@ -110,23 +110,23 @@ impl<'a> serde::Serializer for &'a mut EthereumRlpSerializer {
         Ok(())
     }
 
-    fn serialize_unit_struct(self, name: &'static str) -> Result<Self::Ok, Self::Error> {
+    fn serialize_unit_struct(self, _: &'static str) -> Result<Self::Ok, Self::Error> {
         todo!()
     }
 
     fn serialize_unit_variant(
         self,
-        name: &'static str,
-        variant_index: u32,
-        variant: &'static str,
+        _: &'static str,
+        _: u32,
+        _: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
         todo!()
     }
 
     fn serialize_newtype_struct<T: ?Sized>(
         self,
-        name: &'static str,
-        value: &T,
+        _: &'static str,
+        _: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
         T: serde::Serialize,
@@ -136,10 +136,10 @@ impl<'a> serde::Serializer for &'a mut EthereumRlpSerializer {
 
     fn serialize_newtype_variant<T: ?Sized>(
         self,
-        name: &'static str,
-        variant_index: u32,
-        variant: &'static str,
-        value: &T,
+        _: &'static str,
+        _: u32,
+        _: &'static str,
+        _: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
         T: serde::Serialize,
@@ -153,29 +153,29 @@ impl<'a> serde::Serializer for &'a mut EthereumRlpSerializer {
     }
 
     fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple, Self::Error> {
-        todo!()
+        self.serialize_seq(Some(len))
     }
 
     fn serialize_tuple_struct(
         self,
-        name: &'static str,
-        len: usize,
+        _: &'static str,
+        _: usize,
     ) -> Result<Self::SerializeTupleStruct, Self::Error> {
-        todo!()
+        unimplemented!()
     }
 
     fn serialize_tuple_variant(
         self,
-        name: &'static str,
-        variant_index: u32,
-        variant: &'static str,
-        len: usize,
+        _: &'static str,
+        _: u32,
+        _: &'static str,
+        _: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        todo!()
+        unimplemented!()
     }
 
-    fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
-        todo!()
+    fn serialize_map(self, _: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
+        unimplemented!()
     }
 
     fn serialize_struct(
@@ -189,12 +189,12 @@ impl<'a> serde::Serializer for &'a mut EthereumRlpSerializer {
 
     fn serialize_struct_variant(
         self,
-        name: &'static str,
-        variant_index: u32,
-        variant: &'static str,
-        len: usize,
+        _: &'static str,
+        _: u32,
+        _: &'static str,
+        _: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
-        todo!()
+        unimplemented!()
     }
 }
 
@@ -203,15 +203,15 @@ impl<'a> serde::ser::SerializeTuple for &'a mut EthereumRlpSerializer {
 
     type Error = crate::error::ErrorKind;
 
-    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_element<T: ?Sized>(&mut self, _: &T) -> Result<(), Self::Error>
     where
         T: serde::Serialize,
     {
-        todo!()
+        unimplemented!()
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        unimplemented!()
     }
 }
 impl<'a> serde::ser::SerializeSeq for &'a mut EthereumRlpSerializer {
@@ -238,13 +238,12 @@ impl<'a> serde::ser::SerializeStruct for &'a mut EthereumRlpSerializer {
 
     fn serialize_field<T: ?Sized>(
         &mut self,
-        key: &'static str,
+        _: &'static str,
         value: &T,
     ) -> Result<(), Self::Error>
     where
         T: serde::Serialize,
     {
-        println!("serialize field key: {:?}", &key);
         value.serialize(&mut **self)?;
         Ok(())
     }
@@ -260,8 +259,8 @@ impl<'a> serde::ser::SerializeStructVariant for &'a mut EthereumRlpSerializer {
 
     fn serialize_field<T: ?Sized>(
         &mut self,
-        key: &'static str,
-        value: &T,
+        _: &'static str,
+        _: &T,
     ) -> Result<(), Self::Error>
     where
         T: serde::Serialize,
@@ -279,7 +278,7 @@ impl<'a> serde::ser::SerializeTupleStruct for &'a mut EthereumRlpSerializer {
 
     type Error = crate::error::ErrorKind;
 
-    fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_field<T: ?Sized>(&mut self, _: &T) -> Result<(), Self::Error>
     where
         T: serde::Serialize,
     {
@@ -295,7 +294,7 @@ impl<'a> serde::ser::SerializeTupleVariant for &'a mut EthereumRlpSerializer {
 
     type Error = crate::error::ErrorKind;
 
-    fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_field<T: ?Sized>(&mut self, _: &T) -> Result<(), Self::Error>
     where
         T: serde::Serialize,
     {
@@ -312,14 +311,14 @@ impl<'a> serde::ser::SerializeMap for &'a mut EthereumRlpSerializer {
 
     type Error = crate::error::ErrorKind;
 
-    fn serialize_key<T: ?Sized>(&mut self, key: &T) -> Result<(), Self::Error>
+    fn serialize_key<T: ?Sized>(&mut self, _: &T) -> Result<(), Self::Error>
     where
         T: serde::Serialize,
     {
         todo!()
     }
 
-    fn serialize_value<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_value<T: ?Sized>(&mut self, _: &T) -> Result<(), Self::Error>
     where
         T: serde::Serialize,
     {

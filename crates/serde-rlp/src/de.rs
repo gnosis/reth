@@ -251,9 +251,9 @@ impl<'de, 'a> serde::Deserializer<'de> for &'a mut EthereumRlpDeserializer<'de> 
 
     fn deserialize_enum<V>(
         self,
-        name: &'static str,
-        variants: &'static [&'static str],
-        visitor: V,
+        _name: &'static str,
+        _variants: &'static [&'static str],
+        _visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
