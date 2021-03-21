@@ -1,44 +1,59 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{AccessListData, ChainId, LegacyData, Signature, Transaction, TxType};
+use super::{AccessListPayload, LegacyPayload, Transaction, TxType};
 use crate::Address;
 use rlp::{self, DecoderError, Rlp, RlpStream};
 
-pub trait DataTrait {
-    fn encode(&self, chain_id: Option<ChainId>, signature: Option<&Signature>) -> Vec<u8>;
+pub trait PayloadTrait {
+    fn encode(tx: &Transaction, for_signature: bool) -> Vec<u8>;
     fn decode(input: &[u8]) -> Result<Transaction, DecoderError>;
 }
 
-pub enum Data {
-    Legacy(LegacyData),
-    AccessList(AccessListData),
+/// transaction type specific data and encode decode schemes for every type.
+#[derive(Debug, Clone)]
+pub enum TypePayload {
+    Legacy(LegacyPayload),
+    AccessList(AccessListPayload),
 }
 
-impl DataTrait for Data {
-    fn encode(&self, chain_id: Option<ChainId>, signature: Option<&Signature>) -> Vec<u8> {
+impl TypePayload {
+    pub fn txtype(&self) -> TxType {
         match self {
-            Self::Legacy(data) => data.encode(chain_id, signature),
-            Self::AccessList(data) => data.encode(chain_id, signature),
+            Self::Legacy(_) => TxType::Legacy,
+            Self::AccessList(_) => TxType::AccessList,
+        }
+    }
+}
+
+impl Default for TypePayload {
+    fn default() -> TypePayload {
+        TypePayload::Legacy(LegacyPayload::default())
+    }
+}
+
+impl PayloadTrait for TypePayload {
+    fn encode(tx: &Transaction, for_signature: bool) -> Vec<u8> {
+        match tx.txtype() {
+            TxType::Legacy => LegacyPayload::encode(tx, for_signature),
+            TxType::AccessList => AccessListPayload::encode(tx, for_signature),
         }
     }
 
     fn decode(input: &[u8]) -> Result<Transaction, DecoderError> {
         if input.is_empty() {
-            // at least one byte needs to be present
             return Err(DecoderError::RlpIncorrectListLen);
         }
-        let header = input[0];
-        // type of transaction can be obtained from first byte. If first bit is 1 it means we are dealing with RLP list.
-        // if it is 0 it means that we are dealing with custom transaction defined in EIP-2718.
-        if (header & 0x80) != 0x00 {
-            LegacyData::decode(input)
+        let type_byte = input[0];
+        //if first bit is `1` it means that we are dealing with rlp list and old legacy transaction
+        if (type_byte & 0x80) != 0x00 {
+            LegacyPayload::decode(input)
         } else {
-            let id = TxType::try_from_wire_byte(header)
+            let id = TxType::try_from_wire_byte(type_byte)
                 .map_err(|_| DecoderError::Custom("Unknown transaction"))?;
             // other transaction types
             match id {
-                TxType::AccessList => AccessListData::decode(&input[1..]),
+                TxType::AccessList => AccessListPayload::decode(input),
                 TxType::Legacy => return Err(DecoderError::Custom("Unknown transaction legacy")),
             }
         }
@@ -49,6 +64,12 @@ impl DataTrait for Data {
 pub enum CallType {
     CreateContract(),
     CallMessage(Address),
+}
+
+impl Default for CallType {
+    fn default() -> Self {
+        Self::CreateContract()
+    }
 }
 
 impl rlp::Decodable for CallType {

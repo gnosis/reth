@@ -6,7 +6,7 @@ mod block;
 mod transaction;
 
 // large integers
-pub use ethereum_types::U256;
+pub use ethereum_types::{U256, U64};
 
 // special purpose hashes
 pub use ethereum_types::{Address, Bloom, H256};
