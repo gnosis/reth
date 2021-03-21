@@ -92,6 +92,7 @@ impl<'a> serde::Serializer for &'a mut EthereumRlpSerializer {
     }
 
     fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
+        //self.stream.begin_list(0);
         self.stream.append_empty_data();
         Ok(())
     }
@@ -100,7 +101,8 @@ impl<'a> serde::Serializer for &'a mut EthereumRlpSerializer {
     where
         T: serde::Serialize,
     {
-        todo!()
+        self.stream.begin_list(1);
+        value.serialize(self)
     }
 
     fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
@@ -178,10 +180,11 @@ impl<'a> serde::Serializer for &'a mut EthereumRlpSerializer {
 
     fn serialize_struct(
         self,
-        name: &'static str,
+        _: &'static str,
         len: usize,
     ) -> Result<Self::SerializeStruct, Self::Error> {
-        todo!()
+        self.stream.begin_list(len);
+        Ok(self)
     }
 
     fn serialize_struct_variant(
@@ -241,11 +244,13 @@ impl<'a> serde::ser::SerializeStruct for &'a mut EthereumRlpSerializer {
     where
         T: serde::Serialize,
     {
-        todo!()
+        println!("serialize field key: {:?}", &key);
+        value.serialize(&mut **self)?;
+        Ok(())
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        Ok(())
     }
 }
 impl<'a> serde::ser::SerializeStructVariant for &'a mut EthereumRlpSerializer {

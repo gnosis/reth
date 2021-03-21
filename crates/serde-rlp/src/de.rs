@@ -1,11 +1,9 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
+use crate::error::ErrorKind;
 use rlp::{Rlp, RlpIterator};
 use serde::de::{DeserializeSeed, SeqAccess};
-use serde_rlp::error::ErrorKind;
-
-use crate as serde_rlp;
 
 #[derive(Debug)]
 pub(crate) struct EthereumRlpDeserializer<'de> {
@@ -23,7 +21,7 @@ impl<'de> EthereumRlpDeserializer<'de> {
 }
 
 impl<'de, 'a> serde::Deserializer<'de> for &'a mut EthereumRlpDeserializer<'de> {
-    type Error = serde_rlp::error::ErrorKind;
+    type Error = crate::error::ErrorKind;
 
     fn deserialize_any<V>(self, _: V) -> Result<V::Value, Self::Error>
     where
@@ -116,52 +114,52 @@ impl<'de, 'a> serde::Deserializer<'de> for &'a mut EthereumRlpDeserializer<'de> 
         visitor.visit_char(self.current.as_val::<u8>().unwrap() as char)
     }
 
-    fn deserialize_str<V>(self, _: V) -> Result<V::Value, Self::Error>
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        Err(ErrorKind::RlpIntoBorrowedStringDeserializationNotSupported)
+        visitor.visit_string(self.current.as_val::<String>().unwrap())
     }
 
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-      visitor.visit_string(self.current.as_val::<String>().unwrap())
+        visitor.visit_string(self.current.as_val::<String>().unwrap())
     }
 
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        todo!()
+        visitor.visit_bytes(self.current.as_raw())
     }
 
     fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        todo!()
+        self.deserialize_bytes(visitor)
     }
 
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        todo!()
+        self.deserialize_seq(visitor)
     }
 
     fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        todo!()
+        self.deserialize_ignored_any(visitor)
     }
 
     fn deserialize_unit_struct<V>(
         self,
-        name: &'static str,
-        visitor: V,
+        _: &'static str,
+        _: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
@@ -171,8 +169,8 @@ impl<'de, 'a> serde::Deserializer<'de> for &'a mut EthereumRlpDeserializer<'de> 
 
     fn deserialize_newtype_struct<V>(
         self,
-        name: &'static str,
-        visitor: V,
+        _: &'static str,
+        _: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
@@ -190,7 +188,7 @@ impl<'de, 'a> serde::Deserializer<'de> for &'a mut EthereumRlpDeserializer<'de> 
         }
 
         impl<'a, 'de> SeqAccess<'de> for Access<'a, 'de> {
-            type Error = serde_rlp::error::ErrorKind;
+            type Error = crate::error::ErrorKind;
 
             fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
             where
@@ -213,18 +211,18 @@ impl<'de, 'a> serde::Deserializer<'de> for &'a mut EthereumRlpDeserializer<'de> 
         })
     }
 
-    fn deserialize_tuple<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_tuple<V>(self, _: usize, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        todo!()
+        self.deserialize_seq(visitor)
     }
 
     fn deserialize_tuple_struct<V>(
         self,
-        name: &'static str,
-        len: usize,
-        visitor: V,
+        _: &'static str,
+        _: usize,
+        _: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
@@ -232,7 +230,7 @@ impl<'de, 'a> serde::Deserializer<'de> for &'a mut EthereumRlpDeserializer<'de> 
         todo!()
     }
 
-    fn deserialize_map<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_map<V>(self, _: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
@@ -241,14 +239,14 @@ impl<'de, 'a> serde::Deserializer<'de> for &'a mut EthereumRlpDeserializer<'de> 
 
     fn deserialize_struct<V>(
         self,
-        name: &'static str,
+        _: &'static str,
         fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        todo!()
+        self.deserialize_tuple(fields.len(), visitor)
     }
 
     fn deserialize_enum<V>(
@@ -263,14 +261,14 @@ impl<'de, 'a> serde::Deserializer<'de> for &'a mut EthereumRlpDeserializer<'de> 
         todo!()
     }
 
-    fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_identifier<V>(self, _: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
         todo!()
     }
 
-    fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_ignored_any<V>(self, _: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {

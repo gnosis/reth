@@ -3,6 +3,7 @@
 
 use crate as serde_rlp;
 
+use ethereum_types::U256;
 use hex_literal::hex;
 use serde::{Deserialize, Serialize};
 
@@ -14,20 +15,46 @@ struct Person {
 }
 
 #[test]
-fn struct_sanity_test() {
-    let original = Person {
-        first_name: "first".to_owned(),
-        last_name: "last".to_owned(),
-        age: 99,
+fn struct_simple_test() -> serde_rlp::Result<()> {
+    
+    #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+    struct Item {
+        a: String
+    }
+
+    let item = Item { a: "cat".into() };
+    let expected = vec![0xc4, 0x83, b'c', b'a', b't'];
+    let out = serde_rlp::serialize(&item)?;
+    
+    assert_eq!(out, expected);
+
+    let decoded = serde_rlp::deserialize(&expected)?;
+    assert_eq!(item, decoded);
+
+    Ok(())
+}
+
+#[test]
+fn struct_complex_test() -> serde_rlp::Result<()> {
+
+    #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+    struct Item {
+        a: String,
+        b: u64,
+        c: ethereum_types::U256
+    }
+
+	let item = Item { 
+        a: "cat".into(),
+        b: 1599u64,
+        c: U256::from(208090)
     };
 
-    let bytes = super::serialize(&original).unwrap();
+	let out = serde_rlp::serialize(&item)?;
+    let deserialized: Item = serde_rlp::deserialize(&out)?;
+    assert_eq!(item, deserialized);
 
-    let reconstructed: Person = super::deserialize(&bytes).unwrap();
-
-    assert_eq!(reconstructed.first_name, "first");
-    assert_eq!(reconstructed.last_name, "last");
-    assert_eq!(reconstructed.age, 99);
+    Ok(())
 }
 
 #[test]
