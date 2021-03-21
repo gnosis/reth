@@ -4,6 +4,7 @@
 mod account;
 mod block;
 mod transaction;
+mod verifiable;
 
 // large integers
 pub use ethereum_types::{U256, U64};
@@ -14,8 +15,6 @@ pub use ethereum_types::{Address, Bloom, H256};
 pub type Keccak = H256;
 
 pub type Bytes = Vec<u8>;
-
-type BlockNumber = u64;
 
 // domain types
 pub use account::Account;

@@ -1,17 +1,18 @@
+use std::error::Error;
+
 /// Copyright 2021 Gnosis Ltd.
 /// SPDX-License-Identifier: Apache-2.0
 use super::*;
-use crypto::publickey::{self, public_to_address, recover, Signature as CryptoSig};
+use crypto::publickey::{self, public_to_address, recover, Secret, Signature as CryptoSig};
 use ethereum_types::{Address, BigEndianHash, Public, H256, U256};
 use rlp::RlpStream;
+use serde::{Deserialize, Serialize};
 
 pub type SigV = u8;
-pub type SigVLegacy = u64;
-
 pub type Author = (Address, Public);
 
 /// Components that constitute transaction signature
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Signature {
     /// The V field of the signature; which half of the curve our point falls in.
     pub v: SigV,
@@ -24,6 +25,15 @@ pub struct Signature {
 impl Signature {
     pub fn new(v: SigV, r: U256, s: U256) -> Self {
         Signature { v, r, s }
+    }
+
+    pub fn for_transaction(
+        transaction: &Transaction,
+        secret: &Secret,
+    ) -> Result<Self, Box<dyn Error>> {
+        Ok(publickey::sign(secret, &transaction.hash()?)
+            .expect("Expecting valid data and signing of transaction to pass")
+            .into())
     }
 
     pub fn rlp_append(&self, s: &mut RlpStream) {
@@ -83,42 +93,45 @@ impl From<&Signature> for CryptoSig {
     }
 }
 
-pub mod replay_protection {
-    /// Transaction replay protection
-    use super::{ChainId, SigV, SigVLegacy};
+// pub mod replay_protection {
+//     /// Transaction replay protection
+//     use super::SigV;
 
-    /// Merge chain_id and signature V
-    pub fn encode(v: SigV, chain_id: Option<ChainId>) -> SigVLegacy {
-        let replay: u64 = if let Some(n) = chain_id {
-            35 + n * 2
-        } else {
-            27
-        };
-        v as u64 + replay
-    }
+//     pub type SigVLegacy = u64;
+//     pub type ChainId = u64;
 
-    /// Returns standard v from replay protected legacy V
-    pub fn decode_v(v: SigVLegacy) -> SigV {
-        if v == 27 {
-            0
-        } else if v == 28 {
-            1
-        } else if v > 35 {
-            ((v - 1) % 2) as u8
-        } else {
-            4 //invalid value
-        }
-    }
+//     /// Merge chain_id and signature V
+//     pub fn encode(v: SigV, chain_id: Option<ChainId>) -> SigVLegacy {
+//         let replay: u64 = if let Some(n) = chain_id {
+//             35 + n * 2
+//         } else {
+//             27
+//         };
+//         v as u64 + replay
+//     }
 
-    // return chain id from replay protected legacy V
-    pub fn decode_chain_id(v: SigVLegacy) -> Option<ChainId> {
-        if v >= 35 {
-            Some((v - 35) / 2 as u64)
-        } else {
-            None
-        }
-    }
-}
+//     /// Returns standard v from replay protected legacy V
+//     pub fn decode_v(v: SigVLegacy) -> SigV {
+//         if v == 27 {
+//             0
+//         } else if v == 28 {
+//             1
+//         } else if v > 35 {
+//             ((v - 1) % 2) as u8
+//         } else {
+//             4 //invalid value
+//         }
+//     }
+
+//     // return chain id from replay protected legacy V
+//     pub fn decode_chain_id(v: SigVLegacy) -> Option<ChainId> {
+//         if v >= 35 {
+//             Some((v - 35) / 2 as u64)
+//         } else {
+//             None
+//         }
+//     }
+// }
 
 #[cfg(test)]
 mod tests {}
