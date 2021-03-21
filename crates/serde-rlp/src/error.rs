@@ -17,6 +17,15 @@ pub enum ErrorKind {
     RlpIsTooShort,
     /// Declared length is invalid and results in overflow
     RlpInvalidLength,
+    /// RLP encoding does not support signed integers
+    RlpSignedIntegersNotSupported,
+    /// RLP encoding does not support floating point numbers
+    RlpFloatingPorintNotSupported,
+    /// Serde has a deserialize_any method that lets the format hint to the
+    /// object which route to take in deserializing.
+    RlpAnyNotSupported,
+    /// Error caused by the underlying IO. Most likey by std::io::reader el at.
+    IOError(String),
     /// Custom rlp decoding error.
     Custom(&'static str),
 }

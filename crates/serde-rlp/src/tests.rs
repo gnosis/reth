@@ -44,9 +44,9 @@ fn vec_u64_test() -> serde_rlp::Result<()> {
     assert_eq!(encoded_single_v, hex!("c10f"));
     assert_eq!(encoded_many_v, hex!("c60102030781ff"));
 
+    let decoded_many_v: Vec<u64> = serde_rlp::deserialize(&encoded_many_v)?;
     let decoded_empty_v: Vec<u64> = serde_rlp::deserialize(&encoded_empty_v)?;
     let decoded_single_v: Vec<u64> = serde_rlp::deserialize(&encoded_single_v)?;
-    let decoded_many_v: Vec<u64> = serde_rlp::deserialize(&encoded_many_v)?;
 
     assert_eq!(empty_v, decoded_empty_v);
     assert_eq!(single_v, decoded_single_v);

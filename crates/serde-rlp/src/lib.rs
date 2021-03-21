@@ -5,10 +5,11 @@ pub mod de;
 pub mod error;
 pub mod ser;
 
+use error::ErrorKind;
 pub use error::Result;
 
-use ser::EthereumRlpSerializer;
 use de::EthereumRlpDeserializer;
+use ser::EthereumRlpSerializer;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 pub fn serialize<E>(object: &E) -> Result<Vec<u8>>
@@ -24,16 +25,21 @@ pub fn deserialize<'a, T>(bytes: &'a [u8]) -> Result<T>
 where
     T: Deserialize<'a>,
 {
-    let mut deserializer = EthereumRlpDeserializer::from_slice(bytes);
-    Ok(T::deserialize(&mut deserializer)?)
+    Ok(T::deserialize(&mut EthereumRlpDeserializer::from_slice(
+        bytes,
+    ))?)
 }
 
-pub fn deserialize_from<R, T>(reader: R) -> Result<T>
+pub fn deserialize_from<R, T>(mut reader: R) -> Result<T>
 where
     R: std::io::Read,
     T: DeserializeOwned,
 {
-    todo!();
+    let mut buffer = Vec::new();
+    reader
+        .read_to_end(&mut buffer)
+        .map_err(|e| ErrorKind::IOError(e.to_string()))?;
+    deserialize(&buffer)
 }
 
 #[cfg(test)]
