@@ -71,7 +71,7 @@ fn str_test() -> serde_rlp::Result<()> {
         ]
     );
 
-    let decoded_s: &str = serde_rlp::deserialize(&encoded_s)?;
+    let decoded_s: String = serde_rlp::deserialize(&encoded_s)?;
     assert_eq!(s, decoded_s);
 
     Ok(())

@@ -116,18 +116,18 @@ impl<'de, 'a> serde::Deserializer<'de> for &'a mut EthereumRlpDeserializer<'de> 
         visitor.visit_char(self.current.as_val::<u8>().unwrap() as char)
     }
 
-    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_str<V>(self, _: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        todo!()
+        Err(ErrorKind::RlpIntoBorrowedStringDeserializationNotSupported)
     }
 
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
-        todo!()
+      visitor.visit_string(self.current.as_val::<String>().unwrap())
     }
 
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>

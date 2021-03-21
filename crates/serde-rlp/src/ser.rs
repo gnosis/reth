@@ -82,7 +82,8 @@ impl<'a> serde::Serializer for &'a mut EthereumRlpSerializer {
     }
 
     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
-        todo!()
+        self.stream.append(&v);
+        Ok(())
     }
 
     fn serialize_bytes(self, v: &[u8]) -> Result<Self::Ok, Self::Error> {

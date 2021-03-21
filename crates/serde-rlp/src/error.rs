@@ -21,13 +21,15 @@ pub enum ErrorKind {
     RlpSignedIntegersNotSupported,
     /// RLP encoding does not support floating point numbers
     RlpFloatingPorintNotSupported,
+    /// An attempt to deserialize RLP into &str. deserialize into String instead
+    RlpIntoBorrowedStringDeserializationNotSupported,
     /// Serde has a deserialize_any method that lets the format hint to the
     /// object which route to take in deserializing.
     RlpAnyNotSupported,
     /// Error caused by the underlying IO. Most likey by std::io::reader el at.
     IOError(String),
     /// Custom rlp decoding error.
-    Custom(&'static str),
+    Custom(String),
 }
 
 impl Display for ErrorKind {
@@ -47,10 +49,10 @@ impl serde::ser::Error for ErrorKind {
 }
 
 impl serde::de::Error for ErrorKind {
-    fn custom<T>(msg: T) -> Self
+    fn custom<T: std::fmt::Display>(msg: T) -> Self
     where
         T: Display,
     {
-        todo!()
+        ErrorKind::Custom(msg.to_string()).into()
     }
 }
