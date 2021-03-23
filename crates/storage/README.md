@@ -1,5 +1,5 @@
 # reth Storage
-w
+
 This crate is responsible for implementing all storage and storage filling mechanism used within reth. There are two primary types of storage:
 
   - Blockchain storage, responsible for storing a copy of all known blocks and transactions.
