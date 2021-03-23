@@ -1,9 +1,8 @@
 // Copyright 2020 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::blockchain::Blockchain;
-use crate::common_types::{BlockBody, BlockHeader, BlockId, BlockNumber, GetBlockHeaders};
-use primitive_types::H256;
+use crate::common_types::GetBlockHeaders;
+use core::{BlockBody, BlockHeader, BlockId, BlockNumber, H256};
 use std::collections::HashMap;
 
 pub struct HeadersInMemory {
@@ -26,7 +25,7 @@ fn clone_option(from_header: Option<&BlockHeader>) -> Option<BlockHeader> {
     }
 }
 
-impl Blockchain for HeadersInMemory {
+impl HeadersInMemory {
     fn block_header(&self, number: BlockNumber) -> Option<BlockHeader> {
         clone_option(self.headers.get(&number))
     }

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [package]
-name = "core"
+name = "reth-core"
 version = "1.0.0-alpha"
 authors = ["Karim Agha <karim.agha@gnosis.io>"]
 edition = "2018"

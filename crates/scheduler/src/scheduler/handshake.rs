@@ -1,21 +1,22 @@
 // Copyright 2020 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{
-    client_adapter::client_info::{ClientStatus, SnapshotManifestStatus},
-    devp2p_adapter::PeerPenal,
-    snapshot_manager,
+use crate::snapshot_manager;
+use interfaces::{
+    devp2p::{PeerPenal, ProtocolId},
+    importer::ImporterStatus,
+    snapshot::{Manifest, Snapshot},
 };
 
 use super::{
     peer_organizer::{ErrorAct, PeerCapability, PeerId, Task, TaskId},
-    protocol::{EthProtocolVersion, ParityProtocolVersion, ProtocolId},
+    protocol::{EthProtocolVersion, ParityProtocolVersion},
 };
 use rlp::{DecoderError, Rlp, RlpStream};
 use std::{collections::HashMap, str::FromStr};
 
+use core::{H256, U256};
 use ethereum_forkid::{ForkFilter, ForkId};
-use primitive_types::{H256, U256};
 
 #[derive(Debug, Clone)]
 pub struct Handshake {
@@ -52,10 +53,10 @@ impl Handshake {
     }
 
     fn encode_rlp_status_msg(
-        status: &ClientStatus,
+        status: &ImporterStatus,
         protocol_version: u32,
         fork_ids: Option<ForkId>,
-        snapshot_manifest: Option<SnapshotManifestStatus>,
+        snapshot_manifest: Option<Manifest>,
     ) -> Vec<u8> {
         let mut rlp = RlpStream::new();
         rlp.begin_unbounded_list();
@@ -76,7 +77,7 @@ impl Handshake {
             //rlp.append(&(0 as u64));//&snapshot_ms.block_number);
         }
         rlp.finalize_unbounded_list();
-        rlp.drain()
+        rlp.out().to_vec()
     }
 
     fn decode_rlp_status_msg(
@@ -123,8 +124,8 @@ impl Handshake {
         peer: &PeerId,
         id: TaskId,
         capability: &PeerCapability,
-        status: &ClientStatus,
-        snapshot_manifest: SnapshotManifestStatus,
+        status: &ImporterStatus,
+        snapshot_manifest: Manifest,
     ) -> Vec<u8> {
         self.peers.insert(*peer, (id, capability.clone()));
         let mut fork_id = None;

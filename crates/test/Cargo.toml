@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [package]
-name = "txpool"
+name = "reth-test"
 version = "1.0.0-alpha"
-authors = ["Dragan Rakita <dragan0rakita@gmail.com","Karim Agha <karim.agha@gnosis.io>"]
+authors = ["Dragan Rakita <dragan0rakita@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

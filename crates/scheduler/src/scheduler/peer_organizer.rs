@@ -3,14 +3,15 @@
 
 use super::{
     handshake::HandshakeInfo,
-    protocol::{EthMessageId, MessageId, ProtocolId},
+    protocol::{EthMessageId, MessageId},
 };
-use crate::devp2p_adapter::{adapter::Devp2pAdapter, PeerPenal};
 use std::{
     collections::{HashMap, HashSet},
     sync::{atomic::AtomicUsize, Arc, Mutex},
     time::{Duration, Instant},
 };
+
+use interfaces::devp2p::{Adapter as Devp2pAdapter, PeerPenal, ProtocolId};
 
 #[derive(Debug)]
 pub struct CustomError {

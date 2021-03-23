@@ -1,18 +1,35 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::sync::Arc;
-
-use crate::scheduler::{
-    peer_organizer::{PeerCapability, PeerId},
-    protocol::ProtocolId,
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
 };
 
+pub type ProtocolIdType = [u8; 3];
+pub type PeerId = usize;
+pub type PeerCapability = HashMap<ProtocolId, HashSet<u8>>;
+
+#[derive(Debug, Eq, PartialEq, Hash, Copy, Clone)]
+pub enum ProtocolId {
+    Parity,
+    Eth,
+}
+
+impl ProtocolId {
+    pub fn to_protocol_type(self) -> ProtocolIdType {
+        match self {
+            Self::Parity => *b"par",
+            Self::Eth => *b"eth",
+        }
+    }
+}
+
 /// Interface that devp2p need to implement to merge with rest of reth modules.
-pub trait Devp2pAdapter: Send + Sync {
+pub trait Adapter: Send + Sync {
     fn start(&self);
     fn stop(&self);
-    fn register_handler(&self, handle: Arc<dyn Devp2pInbound>);
+    fn register_handler(&self, handle: Arc<dyn Inbound>);
     //unregister handler?
     fn send_mesage(&self, protocol: ProtocolId, peer: &PeerId, mesage_id: u8, data: &[u8]);
     fn penalize_peer(&self, peer: &PeerId, penal: PeerPenal);
@@ -26,7 +43,7 @@ pub enum PeerPenal {
 }
 
 /// Inbound communication from devp2p to scheduler side
-pub trait Devp2pInbound: Send + Sync {
+pub trait Inbound: Send + Sync {
     /// Called when new network packet received.
     fn receive_message(&self, peer: &PeerId, protocol: ProtocolId, message_id: u8, data: &[u8]);
     /// Called when new peer is connected. Only called when peer supports the same protocol.
