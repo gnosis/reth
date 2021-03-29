@@ -1,7 +1,7 @@
-use core::{BlockBody, BlockHeader, BlockId, BlockNumber, BlockReceipt, H256};
-
-// Copyright 2021 Gnosis Ltd.
+// Copyright 2020-2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
+
+use core::{BlockBody, BlockHeader, BlockId, BlockNumber, BlockReceipt, H256};
 
 /// Trait that allows getting blocks data
 pub trait BlockchainReadOnly: Send + Sync {
@@ -18,9 +18,6 @@ pub trait BlockchainReadOnly: Send + Sync {
     fn receipt(&self) -> Option<BlockReceipt>;
     fn best_header(&self) -> Option<BlockNumber>;
     fn tx(&self);
-
-    //TODO just temporarily added this. This should not be part of blockchain for current flow.
-    fn import_header(&self, header: &BlockHeader);
 }
 
 pub trait BlockchainCommit {

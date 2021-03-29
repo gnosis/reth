@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /// ETH protocol version related protocol
+#[allow(non_camel_case_types)]
 #[derive(PartialEq)]
 pub enum EthProtocolVersion {
     VERSION_63,
@@ -36,6 +37,7 @@ impl EthProtocolVersion {
 }
 
 /// Parity protocol version related protocol
+#[allow(non_camel_case_types)]
 pub enum ParityProtocolVersion {
     VERSION_1 = 1,
     VERSION_2 = 2,

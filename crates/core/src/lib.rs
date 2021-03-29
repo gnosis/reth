@@ -19,5 +19,5 @@ pub type BlockNumber = u64;
 
 // domain types
 pub use account::Account;
-pub use block::{Block, BlockBody, BlockHeader, BlockId, BlockReceipt};
+pub use block::{Block, BlockBody, BlockHeader, BlockId, BlockReceipt, WireBlock};
 pub use transaction::Transaction;

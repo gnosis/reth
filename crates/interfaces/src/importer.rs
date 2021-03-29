@@ -1,4 +1,7 @@
-use core::{BlockNumber, H256, U256};
+// Copyright 2020-2021 Gnosis Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
+use core::{BlockNumber, H256, U256, WireBlock};
 use std::str::FromStr;
 
 use ethereum_forkid::{ForkHash, ForkId};
@@ -11,9 +14,28 @@ pub struct ImporterStatus {
     pub fork: ForkId,
 }
 
+pub struct ImporterInfo {
+    queue_limit: u32,
+    queue_len: u32,
+    ancient_queue_limit: u32,
+    ancient_queue_len: u32,
+}
+
+/// Importer has few phases:
+/// 1. solo block verification
+/// 2. family block verification (child->parent verf);
+/// 3. execution of transactions
+/// 4. execution output verification
+/// 5. final verification
+/// 6. commit state to statedb
+/// 7. commit block to blockchain
+
 // TODO big TODO cleanup this after a proper trait is made. Leave this nasty hardcoded data for now.
 pub trait Importer: Send + Sync {
-    //pub fn get
+    fn import_block(&mut self, block: &WireBlock);
+    fn import_ancient_block(&self);
+    fn verificator_info(&self) -> &ImporterInfo;
+
     fn status(&self) -> ImporterStatus {
         //TODO dummy values
         ImporterStatus {

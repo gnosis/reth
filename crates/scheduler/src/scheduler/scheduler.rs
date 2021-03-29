@@ -6,7 +6,7 @@ use super::{
     peer_organizer::{ErrorAct, PeerCapability, PeerId, PeerOrganizer, Task, TaskType},
     protocol::{EthMessageId, MessageId, ParityMessageId},
 };
-use crate::{block_manager::BlockManager, client_adapter::headers_in_memory::HeadersInMemory};
+use crate::{block_manager::BlockchainSync, client_adapter::headers_in_memory::HeadersInMemory};
 
 use interfaces::{
     blockchain::BlockchainReadOnly,
@@ -18,8 +18,8 @@ use interfaces::{
 use log::*;
 use std::{
     sync::{
-        mpsc::{channel, RecvTimeoutError, Sender},
-        Arc, Condvar, Mutex,
+        mpsc::{channel, Sender},
+        Arc, Mutex,
     },
     thread,
     time::Duration,
@@ -37,10 +37,10 @@ pub struct Scheduler {
     state: Mutex<SchedulerState>,
 
     peer_organizer: Arc<Mutex<PeerOrganizer>>,
-    importer: Arc<dyn Importer>,
+    importer: Arc<Mutex<dyn Importer>>,
     snapshot: Arc<dyn Snapshot>,
 
-    block_manager: Arc<Mutex<BlockManager>>,
+    blockchain_sync: BlockchainSync,
     //pending_packages: u32,
     /*
     block_manager,
@@ -70,13 +70,14 @@ impl Scheduler {
         let devp2p = Arc::new(devp2p);
         let (tx, rx) = channel::<LoopMsg>();
         let chain = Arc::new(Mutex::new(HeadersInMemory::new()));
+        let importer = Arc::clone(&chain);
         let peer_organizer = PeerOrganizer::new(devp2p.clone());
-        let block_manager = BlockManager::new(blockchain, importer.clone());
+        let blockchain_sync = BlockchainSync::new(chain, importer.clone());
         let org = Arc::new(Scheduler {
             peer_organizer: peer_organizer,
             state: Mutex::new(SchedulerState::WaitingPeer),
             handshake: Mutex::new(Handshake::new()),
-            block_manager: block_manager,
+            blockchain_sync: blockchain_sync,
             main_loop_trigger: Mutex::new(tx),
             thread_handle: Mutex::new(None),
             importer,
@@ -126,9 +127,11 @@ impl Scheduler {
 
     pub fn main_loop(&self) {
         let mut org = self.peer_organizer.lock().unwrap();
-        let block_mgr = self.block_manager.lock().unwrap();
-        if let Some(task) = block_mgr.next_sync_task() {
-            org.schedule_to_free_peer(task);
+        if let Some(task) = self.blockchain_sync.next_sync_task() {
+            let success = org.schedule_to_free_peer(task);
+            if success {
+                self.blockchain_sync.sync_task_started();
+            }
         }
         let failed_tasks = org.tick();
         if failed_tasks.len() != 0 {
@@ -190,34 +193,20 @@ impl Scheduler {
             }
             EthMessageId::NewBlockHashes => {
                 info!("Got NewBlockHashes message from {}", peer);
-                self.block_manager
-                    .lock()
-                    .unwrap()
-                    .api_new_block_hashes(peer, data);
+                self.blockchain_sync.api_new_block_hashes(peer, data)?;
             }
             EthMessageId::Transactions => {}
             EthMessageId::GetBlockHeaders => {
                 info!("Responding peer {} with dummy BlockHeaders message", peer);
-                return self
-                    .block_manager
-                    .lock()
-                    .unwrap()
-                    .api_get_block_headers(peer, &data);
+                return self.blockchain_sync.api_get_block_headers(peer, &data);
             }
             EthMessageId::BlockHeaders => {
                 info!("Got BlockHeaders message from {}", peer);
-                self.block_manager
-                    .lock()
-                    .unwrap()
-                    .process_block_headers(&data);
+                self.blockchain_sync.process_block_headers(&data);
             }
             EthMessageId::GetBlockBodies => {
                 info!("Responding peer {} with dummy BlockBodies message", peer);
-                return self
-                    .block_manager
-                    .lock()
-                    .unwrap()
-                    .api_get_block_bodies(peer, &data);
+                return self.blockchain_sync.api_get_block_bodies(peer, &data);
             }
             EthMessageId::BlockBodies => {
                 info!(
@@ -225,10 +214,7 @@ impl Scheduler {
                     peer,
                     data.len()
                 );
-                self.block_manager
-                    .lock()
-                    .unwrap()
-                    .process_block_bodies(&data);
+                self.blockchain_sync.process_block_bodies(&data);
             }
             EthMessageId::NewBlock => {
                 info!(
@@ -236,10 +222,7 @@ impl Scheduler {
                     peer,
                     data.len()
                 );
-                self.block_manager
-                    .lock()
-                    .unwrap()
-                    .api_new_block_hashes(peer, data);
+                return self.blockchain_sync.api_new_block(peer, data);
             }
             // NewPooledTransactionHashes = 0x08, // eth/65 protocol
             // GetPooledTransactions = 0x09, // eth/65 protocol
@@ -317,7 +300,7 @@ impl Devp2pInbound for Scheduler {
     }
     /// Called when new peer is connected. Only called when peer supports the same protocol.
     fn connected(&self, peer: &PeerId, capability: &PeerCapability) {
-        let client_status = self.importer.status();
+        let client_status = self.importer.lock().unwrap().status();
         let snapshot_manifest_status = self.snapshot.manifest_status();
         let task_id = Task::new_id();
         info!("Peer connected with capa:{:?}", capability);

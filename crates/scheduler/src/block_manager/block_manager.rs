@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::rlp_en_de::{
-    decode_block_headers, decode_new_block, decode_new_block_hashes, encode_block_bodies,
+    decode_block_headers_with_hash, decode_new_block, decode_new_block_hashes, encode_block_bodies,
     encode_block_headers, encode_get_block_bodies, encode_get_block_headers,
 };
 use crate::{
-    block_manager::rlp_en_de::{
-        decode_block_bodies, decode_get_block_bodies, decode_get_block_headers,
+    block_manager::{
+        rlp_en_de::{decode_block_bodies, decode_get_block_bodies, decode_get_block_headers},
+        sync_buffer::{SyncBuffer, SyncWatcher},
     },
     common_types::GetBlockHeaders,
     scheduler::{
@@ -22,53 +23,18 @@ use interfaces::{
     devp2p::{PeerPenal, ProtocolId},
     importer::Importer,
 };
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 
-pub struct BlockManager {
-    chain: Arc<dyn BlockchainReadOnly>,
-    importer: Arc<dyn Importer>,
+pub struct Devp2pHandler {
+    chain: Arc<Mutex<BlockchainReadOnly>>,
 }
 
-//ALL APIs
-impl BlockManager {
-    pub fn new(
-        chain: Arc<dyn BlockchainReadOnly>,
-        importer: Arc<dyn Importer>,
-    ) -> Arc<Mutex<Self>> {
-        Arc::new(Mutex::new(BlockManager { chain, importer }))
+impl Devp2pHandler {
+    pub fn new(chain: Arc<Mutex<BlockchainReadOnly>>) -> Self {
+        Devp2pHandler { chain }
     }
 
-    fn request_block_headers(&self) -> InitialRequest {
-        let request = GetBlockHeaders::new(BlockId::Number(10_000_000), 100, 0, false);
-        let data = encode_get_block_headers(&request);
-        InitialRequest::new(EthMessageId::GetBlockHeaders, data)
-    }
-
-    fn request_block_bodies(&self) -> InitialRequest {
-        let hash: Vec<u8> = vec![
-            254, 133, 237, 238, 76, 75, 76, 219, 252, 14, 247, 181, 240, 164, 1, 45, 207, 31, 229,
-            94, 39, 154, 120, 247, 42, 246, 24, 88, 2, 167, 254, 215,
-        ];
-        let hashes = vec![H256::from_slice(&hash)];
-        let data = encode_get_block_bodies(&hashes);
-        InitialRequest::new(EthMessageId::GetBlockBodies, data)
-    }
-
-    pub fn is_syncing(&self) -> bool {
-        // TODO implement sync instead of this test request
-        self.chain.best_header().is_none()
-    }
-
-    pub fn next_sync_task(&self) -> Option<InitialRequest> {
-        // TODO implement sync instead of this test request
-        if self.is_syncing() {
-            Some(self.request_block_headers())
-        } else {
-            None
-        }
-    }
-
-    pub fn api_new_block_hashes(&self, peer: &PeerId, data: &[u8]) -> Result<Task, ErrorAct> {
+    pub fn new_block_hashes(&self, peer: &PeerId, data: &[u8]) -> Result<Task, ErrorAct> {
         match decode_new_block_hashes(data) {
             Ok(hashes) => {
                 info!("Blockhashes: {:?}", hashes);
@@ -80,13 +46,13 @@ impl BlockManager {
         }
     }
 
-    pub fn api_get_block_headers(&self, peer: &PeerId, data: &[u8]) -> Result<Task, ErrorAct> {
+    pub fn get_block_headers(&self, peer: &PeerId, data: &[u8]) -> Result<Task, ErrorAct> {
         match decode_get_block_headers(data) {
             Ok(request) => Ok(Task::Responde(
                 *peer,
                 ProtocolId::Eth,
                 MessageId::Eth(EthMessageId::BlockHeaders),
-                encode_block_headers(&self.chain.header_request(
+                encode_block_headers(&self.chain.lock().unwrap().header_request(
                     request.block_id,
                     request.max_headers,
                     request.skip,
@@ -103,14 +69,14 @@ impl BlockManager {
     fn retrieve_block_bodies(&self, hashes: &[H256]) -> Vec<BlockBody> {
         let mut bodies = vec![];
         for ref hash in hashes {
-            if let Some(body) = self.chain.body(hash) {
+            if let Some(body) = self.chain.lock().unwrap().body(hash) {
                 bodies.push(body);
             }
         }
         bodies
     }
 
-    pub fn api_get_block_bodies(&self, peer: &PeerId, data: &[u8]) -> Result<Task, ErrorAct> {
+    pub fn get_block_bodies(&self, peer: &PeerId, data: &[u8]) -> Result<Task, ErrorAct> {
         match decode_get_block_bodies(data) {
             Ok(ref hashes) => Ok(Task::Responde(
                 *peer,
@@ -125,33 +91,7 @@ impl BlockManager {
         }
     }
 
-    pub fn process_block_headers(&self, data: &[u8]) {
-        let decoded = decode_block_headers(&data);
-        match decoded {
-            Ok(headers) => {
-                info!("Decoded block headers: {:?}", headers);
-                for ref header in headers {
-                    // TODO should be in importer and only when full block is assembled
-                    //self.importerlock().unwrap().import_block_header(header);
-                }
-            }
-            Err(err) => error!("Could not decode block header: {}", err),
-        }
-    }
-
-    pub fn process_block_bodies(&self, data: &[u8]) {
-        match decode_block_bodies(&data) {
-            Ok(bodies) => {
-                for ref body in bodies {
-                    // TODO should be in importer and only when full block is asembled
-                    //self.chain.lock().unwrap().import_block_body(body);
-                }
-            }
-            Err(err) => error!("Could not decode block bodies: {}", err),
-        }
-    }
-
-    pub fn api_new_block(&self, data: &[u8]) -> Result<Task, ErrorAct> {
+    pub fn new_block(&self, peer: &PeerId, data: &[u8]) -> Result<Task, ErrorAct> {
         match decode_new_block(data) {
             Ok(new_block) => {
                 info!("NewBlock: {:?}", new_block);
@@ -163,5 +103,66 @@ impl BlockManager {
         }
     }
 
-    pub fn api_get_receipts(&self) {}
+    pub fn get_receipts(&self) {}
+}
+
+pub struct BlockchainSync {
+    buffer: Arc<Mutex<SyncBuffer>>,
+    watcher: Arc<Mutex<SyncWatcher>>,
+    devp2p: Arc<Mutex<Devp2pHandler>>,
+}
+
+impl BlockchainSync {
+    pub fn new(chain: Arc<Mutex<dyn BlockchainReadOnly>>, importer: Arc<Mutex<dyn Importer>>) -> Self {
+        let buffer = Arc::new(Mutex::new(SyncBuffer::new(Arc::clone(&importer))));
+        let watcher = Arc::new(Mutex::new(SyncWatcher::new(Arc::clone(&buffer))));
+        let devp2p = Arc::new(Mutex::new(Devp2pHandler::new(Arc::clone(&chain))));
+        BlockchainSync { buffer, watcher, devp2p }
+    }
+
+    pub fn is_syncing(&self) -> bool {
+        self.watcher.lock().unwrap().is_syncing()
+    }
+
+    pub fn next_sync_task(&self) -> Option<InitialRequest> {
+        self.watcher.lock().unwrap().next_sync_task()
+    }
+
+    pub fn sync_task_started(&self) {
+        self.watcher.lock().unwrap().sync_task_started();
+    }
+
+    pub fn process_block_headers(&self, data: &[u8]) {
+        match decode_block_headers_with_hash(&data) {
+            Ok(headers) => self.buffer.lock().unwrap().process_headers(&headers),
+            Err(err) => error!("Sync: Could not decode block header: {}", err),
+        }
+    }
+
+    pub fn process_block_bodies(&self, data: &[u8]) {
+        match decode_block_bodies(&data) {
+            Ok(bodies) => self.buffer.lock().unwrap().process_block_bodies(&bodies),
+            Err(err) => error!("Sync: Could not decode block bodies: {}", err),
+        }
+    }
+
+    pub fn api_new_block_hashes(&self, peer: &PeerId, data: &[u8]) -> Result<Task, ErrorAct> {
+        self.devp2p.lock().unwrap().new_block_hashes(peer, data)
+    }
+
+    pub fn api_get_block_headers(&self, peer: &PeerId, data: &[u8]) -> Result<Task, ErrorAct> {
+        self.devp2p.lock().unwrap().get_block_headers(peer, data)
+    }
+
+    pub fn api_get_block_bodies(&self, peer: &PeerId, data: &[u8]) -> Result<Task, ErrorAct> {
+        self.devp2p.lock().unwrap().get_block_bodies(peer, data)
+    }
+
+    pub fn api_new_block(&self, peer: &PeerId, data: &[u8]) -> Result<Task, ErrorAct> {
+        self.devp2p.lock().unwrap().new_block(peer, data)
+    }
+
+    pub fn api_get_receipts(&self) {
+        self.devp2p.lock().unwrap().get_receipts()
+    }
 }
