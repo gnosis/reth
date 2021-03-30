@@ -1,7 +1,9 @@
 // Copyright 2020-2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-pub mod block_manager;
 mod rlp_en_de;
+mod sync_buffer;
 
-pub use block_manager::BlockManager;
+pub mod block_manager;
+
+pub use block_manager::BlockchainSync;

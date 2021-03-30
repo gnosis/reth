@@ -1,8 +1,10 @@
 // Copyright 2020-2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::common_types::{GetBlockHeaders, NewBlock, NewBlockHash};
+use crate::common_types::{BlockHeaderAndHash, GetBlockHeaders, NewBlock, NewBlockHash};
 use core::{BlockBody, BlockHeader, BlockId, BlockNumber, Transaction, H160, H256, U256};
+
+use keccak_hash::keccak;
 use rlp::{DecoderError, Rlp, RlpStream};
 
 pub fn encode_new_block_hashes(request: &[NewBlockHash]) -> Vec<u8> {
@@ -23,6 +25,10 @@ pub fn decode_new_block_hashes(data: &[u8]) -> Result<Vec<NewBlockHash>, Decoder
     let mut decoded_hashes = vec![];
 
     for ref encoded_hash in encoded_hashes.iter() {
+        let hash_data = encoded_hash.at(0)?.data()?;
+        if hash_data.len() != 32 {
+            panic!("ENCODED_HASH {:?}", encoded_hash);
+        }
         decoded_hashes.push(NewBlockHash {
             hash: H256::from_slice(encoded_hash.at(0)?.data()?),
             number: encoded_hash.val_at(1)?,
@@ -68,8 +74,7 @@ pub fn decode_get_block_headers(data: &[u8]) -> Result<GetBlockHeaders, DecoderE
 }
 
 fn encode_block_header(stream: &mut RlpStream, header: &BlockHeader) {
-    let mut header_stream = stream.begin_list(15);
-    header_stream
+    stream.begin_list(15)
         .append(&header.parent_hash)
         .append(&header.ommers_hash)
         .append(&header.beneficiary_address)
@@ -124,6 +129,21 @@ pub fn decode_block_headers(data: &[u8]) -> Result<Vec<BlockHeader>, DecoderErro
     Ok(decoded_headers)
 }
 
+pub fn decode_block_headers_with_hash(
+    data: &[u8],
+) -> Result<Vec<BlockHeaderAndHash>, DecoderError> {
+    let encoded_headers = Rlp::new(data);
+    let mut decoded_headers = vec![];
+    for item in encoded_headers.iter() {
+        let keccak_hash = keccak(item.as_raw());
+        // FIXME why are there two different H256 types? (keccak/primitive_types version conflict?)
+        let hash = H256::from_slice(keccak_hash.as_bytes());
+        let header = decode_block_header(&item)?;
+        decoded_headers.push(BlockHeaderAndHash { header, hash });
+    }
+    Ok(decoded_headers)
+}
+
 pub fn encode_get_block_bodies(hashes: &[H256]) -> Vec<u8> {
     let mut stream = RlpStream::new_list(hashes.len());
     for hash in hashes {
@@ -159,7 +179,7 @@ pub fn encode_block_bodies(block_bodies: &[BlockBody]) -> Vec<u8> {
 }
 
 fn decode_block_body(body: &Rlp) -> Result<BlockBody, DecoderError> {
-    let transactions = Transaction::rlp_decode_list(body)?;
+    let transactions = Transaction::rlp_decode_list(&body.at(0)?)?;
     let mut ommers = vec![];
     for ref ommer in body.at(1)?.iter() {
         ommers.push(decode_block_header(ommer)?);

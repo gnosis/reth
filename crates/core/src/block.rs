@@ -38,6 +38,11 @@ pub struct BlockBody {
     pub ommers: Vec<BlockHeader>,
 }
 
+pub struct WireBlock {
+    pub header: BlockHeader,
+    pub body: BlockBody,
+}
+
 /// https://ethereum.stackexchange.com/questions/268/ethereum-block-architecture
 //#[derive(Debug, Eq, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Block {

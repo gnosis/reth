@@ -1,6 +1,6 @@
 // will be extracted to separate library. Maybe in util :)
 
-use core::{BlockBody, BlockHeader, BlockId, BlockNumber, Transaction, H160, H256, U256};
+pub use core::{BlockBody, BlockHeader, BlockId, BlockNumber, Transaction, H160, H256, U256};
 
 #[derive(Debug, PartialEq)]
 pub struct NewBlockHash {
@@ -39,4 +39,10 @@ pub struct NewBlock {
     pub transactions: Vec<Transaction>,
     pub ommers: Vec<BlockHeader>,
     pub score: U256,
+}
+
+#[derive(Debug)]
+pub struct BlockHeaderAndHash {
+    pub header: BlockHeader,
+    pub hash: H256,
 }

@@ -240,15 +240,18 @@ impl PeerOrganizer {
         None
     }
 
-    pub fn schedule_to_free_peer(&mut self, request: InitialRequest) {
+    pub fn schedule_to_free_peer(&mut self, request: InitialRequest) -> bool {
         if let Some(ref peer_id) = self.free_peer() {
+            info!("Scheduling task {:?} to peer {}", &request, peer_id);
             let task = Task::InitialRequest(*peer_id, request.message_id, request.data);
             let task_id = Task::new_id();
             let peers_tasks = &mut self.peers.get_mut(peer_id).unwrap().tasks;
             peers_tasks.insert(task_id);
             self.push_task(task, Some(task_id));
+            true
         } else {
             info!("No free peer to schedule task {:?} to", &request);
+            false
         }
     }
 
