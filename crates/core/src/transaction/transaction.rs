@@ -1,11 +1,12 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 use super::{
-    signature::replay_protection, type_payload::PayloadTrait, Author, CallType, Signature, TxType,
-    TypePayload,
+    signature::replay_protection, type_payload::PayloadTrait, Author, CallType, LegacyPayload,
+    Signature, TxType, TypePayload,
 };
-use crate::{Bytes, H256, U256, U64};
+use crate::{Bytes, H256, U256, U64,Address};
 use crypto::publickey::{self, Secret};
+use ethereum_types::{H160, H512, Public};
 use keccak_hash::keccak;
 use rlp::DecoderError;
 
@@ -14,7 +15,8 @@ pub type ChainId = u64;
 /// A transaction (formally, T) is a
 /// single cryptographically-signed instruction constructed by
 /// an actor externally to the scope of Ethereum
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
+#[cfg_attr(any(test, feature="test_only"), derive(Default))]
 pub struct Transaction {
     /// specific data related to type. In future if some of field from standard transaction are removed
     /// it needs to be moved to TypePayload for support for older tx.
@@ -158,10 +160,39 @@ impl Transaction {
         }
         Ok(decoded)
     }
+
+    #[cfg(any(test, feature = "test_only"))]
+    pub fn set_hash(&mut self, hash: H256) {
+        self.hash = hash;
+    }
+}
+
+
+/// Dummy address defined in EIP-86.
+pub const DUMMY_AUTHOR: (Address, Public) = (H160([0xff; 20]), H512([0xff; 64]));
+
+/// Legacy EIP-86 compatible empty signature.
+/// It is used in json tests
+
+#[cfg(any(test, feature = "test_only"))]
+pub fn null_sign(mut tx: Transaction) -> Transaction {
+    tx.signature = Signature::new(0, U256::zero(), U256::zero());
+    tx.author = Some(DUMMY_AUTHOR);
+    tx.recompute_hash();
+    tx
+}
+
+#[cfg(any(test, feature = "test_only"))]
+pub fn fake_sign(mut tx: Transaction, author: Address) -> Transaction {
+    tx.signature = Signature::new(4, U256::one(), U256::one());
+    tx.author = Some((author, H512::zero()));
+    tx.recompute_hash();
+    tx
 }
 
 #[cfg(test)]
 mod tests {
+
     use std::str::FromStr;
 
     use super::{
@@ -172,25 +203,6 @@ mod tests {
     use ethereum_types::{Address, H160, H512, U256, U64};
     use rlp::{Rlp, RlpStream};
     use rustc_hex::{FromHex, ToHex};
-
-    /// Dummy address defined in EIP-86.
-    pub const DUMMY_AUTHOR: (Address, Public) = (H160([0xff; 20]), H512([0xff; 64]));
-
-    /// Legacy EIP-86 compatible empty signature.
-    /// It is used in json tests
-    pub fn null_sign(mut tx: Transaction) -> Transaction {
-        tx.signature = Signature::new(0, U256::zero(), U256::zero());
-        tx.author = Some(DUMMY_AUTHOR);
-        tx.recompute_hash();
-        tx
-    }
-
-    pub fn fake_sign(mut tx: Transaction, author: Address) -> Transaction {
-        tx.signature = Signature::new(4, U256::one(), U256::one());
-        tx.author = Some((author, H512::zero()));
-        tx.recompute_hash();
-        tx
-    }
 
     #[test]
     fn default_legacy_en_de() {

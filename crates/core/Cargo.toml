@@ -6,8 +6,12 @@ name = "reth-core"
 version = "1.0.0-alpha"
 authors = ["Karim Agha <karim.agha@gnosis.io>"]
 edition = "2018"
+resolver = "2"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+test_only = []
+default = []
 
 [dependencies]
 # uint = "0.9"

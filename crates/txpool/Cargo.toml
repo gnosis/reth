@@ -2,12 +2,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [package]
-name = "txpool"
+name = "reth-txpool"
 version = "1.0.0-alpha"
-authors = ["Dragan Rakita <dragan0rakita@gmail.com","Karim Agha <karim.agha@gnosis.io>"]
+authors = ["Gnosis developers <developers@gnosis.io>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-core = { path = "../core", package="reth-core" }
+core = { path = "../core", package="reth-core", default-features = false }
+
+
+[dev-dependencies]
+core = { path = "../core", package="reth-core", features=["test_only"]}
+
+
