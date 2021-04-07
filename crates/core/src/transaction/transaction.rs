@@ -4,9 +4,9 @@ use super::{
     signature::replay_protection, type_payload::PayloadTrait, Author, CallType, LegacyPayload,
     Signature, TxType, TypePayload,
 };
-use crate::{Bytes, H256, U256, U64,Address};
+use crate::{Address, Bytes, H256, U256, U64};
 use crypto::publickey::{self, Secret};
-use ethereum_types::{H160, H512, Public};
+use ethereum_types::{Public, H160, H512};
 use keccak_hash::keccak;
 use rlp::DecoderError;
 
@@ -16,7 +16,7 @@ pub type ChainId = u64;
 /// single cryptographically-signed instruction constructed by
 /// an actor externally to the scope of Ethereum
 #[derive(Debug, Clone)]
-#[cfg_attr(any(test, feature="test_only"), derive(Default))]
+#[cfg_attr(any(test, feature = "test_only"), derive(Default))]
 pub struct Transaction {
     /// specific data related to type. In future if some of field from standard transaction are removed
     /// it needs to be moved to TypePayload for support for older tx.
@@ -166,7 +166,6 @@ impl Transaction {
         self.hash = hash;
     }
 }
-
 
 /// Dummy address defined in EIP-86.
 pub const DUMMY_AUTHOR: (Address, Public) = (H160([0xff; 20]), H512([0xff; 64]));

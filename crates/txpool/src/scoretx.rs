@@ -16,15 +16,14 @@ pub type Score = U256;
 #[derive(Debug)]
 pub struct ScoreTransaction {
     pub score: Score, // mostly depends on gas_price but it is influenced by priority if tx is Local/Regular/Reinserted
-    pub hash: H256, // identifier of transaction
+    pub hash: H256,   // identifier of transaction
     pub timestamp: Instant, // it it used to remove stale transaction
     pub priority: Priority, // Priority of transaction
-    
+
     pub transaction: Transaction, // Transaction payload.
 }
 
 impl ScoreTransaction {
-
     pub fn hash(&self) -> H256 {
         self.transaction.hash()
     }

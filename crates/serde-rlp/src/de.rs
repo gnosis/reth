@@ -156,22 +156,14 @@ impl<'de, 'a> serde::Deserializer<'de> for &'a mut EthereumRlpDeserializer<'de> 
         self.deserialize_ignored_any(visitor)
     }
 
-    fn deserialize_unit_struct<V>(
-        self,
-        _: &'static str,
-        _: V,
-    ) -> Result<V::Value, Self::Error>
+    fn deserialize_unit_struct<V>(self, _: &'static str, _: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {
         todo!()
     }
 
-    fn deserialize_newtype_struct<V>(
-        self,
-        _: &'static str,
-        _: V,
-    ) -> Result<V::Value, Self::Error>
+    fn deserialize_newtype_struct<V>(self, _: &'static str, _: V) -> Result<V::Value, Self::Error>
     where
         V: serde::de::Visitor<'de>,
     {

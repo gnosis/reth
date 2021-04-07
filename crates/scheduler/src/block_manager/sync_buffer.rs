@@ -2,19 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    block_manager::rlp_en_de::{encode_get_block_headers, encode_get_block_bodies},
+    block_manager::rlp_en_de::{encode_get_block_bodies, encode_get_block_headers},
     common_types::{BlockHeaderAndHash, GetBlockHeaders},
     scheduler::{peer_organizer::InitialRequest, protocol::EthMessageId},
 };
-use core::{BlockBody, BlockHeader, BlockId, H256, WireBlock};
+use core::{BlockBody, BlockHeader, BlockId, WireBlock, H256};
 use interfaces::{blockchain::BlockchainReadOnly, importer::Importer};
 
 use std::{
+    cmp::min,
     collections::HashMap,
     iter::Iterator,
     sync::{Arc, Mutex},
 };
-use std::cmp::min;
 
 #[derive(Clone, Copy, Debug)]
 enum SyncSliceStatus {
@@ -58,11 +58,17 @@ impl SyncBuffer {
         self.status = SyncSliceStatus::ReceivedHeaders;
     }
 
-    pub fn unmatched_headers(&self) -> Vec<H256> { self.block_hashes.clone() }
+    pub fn unmatched_headers(&self) -> Vec<H256> {
+        self.block_hashes.clone()
+    }
 
-    pub fn get_status(&self) -> SyncSliceStatus { self.status }
+    pub fn get_status(&self) -> SyncSliceStatus {
+        self.status
+    }
 
-    pub fn set_status(&mut self, new_status: SyncSliceStatus) { self.status = new_status; }
+    pub fn set_status(&mut self, new_status: SyncSliceStatus) {
+        self.status = new_status;
+    }
 
     pub fn process_block_bodies(&mut self, bodies: &[BlockBody]) {
         let n_hashes = self.block_hashes.len();
@@ -72,7 +78,10 @@ impl SyncBuffer {
         for i in 0..n_blocks {
             let hash = &self.block_hashes[i];
             if let Some(header) = self.headers.get(hash) {
-                let block = WireBlock { header: header.clone(), body: bodies[i].clone() };
+                let block = WireBlock {
+                    header: header.clone(),
+                    body: bodies[i].clone(),
+                };
                 self.importer.lock().unwrap().import_block(&block);
             } else {
                 error!("No matching header found for {}", hash);
@@ -104,7 +113,11 @@ fn request_block_bodies(hashes: &[H256]) -> InitialRequest {
 
 impl SyncWatcher {
     pub fn new(buffer: Arc<Mutex<SyncBuffer>>) -> Self {
-        SyncWatcher { block_height: 10_000_000, buffer, status: SyncSliceStatus::Idle }
+        SyncWatcher {
+            block_height: 10_000_000,
+            buffer,
+            status: SyncSliceStatus::Idle,
+        }
     }
 
     pub fn is_syncing(&self) -> bool {
@@ -116,12 +129,10 @@ impl SyncWatcher {
             let status = self.buffer.lock().unwrap().get_status();
             info!("Sync status: {:?}", status);
             match status {
-                SyncSliceStatus::Idle => {
-                    Some(request_block_headers(self.block_height))
-                },
-                SyncSliceStatus::ReceivedHeaders => {
-                    Some(request_block_bodies(&self.buffer.lock().unwrap().unmatched_headers()))
-                }
+                SyncSliceStatus::Idle => Some(request_block_headers(self.block_height)),
+                SyncSliceStatus::ReceivedHeaders => Some(request_block_bodies(
+                    &self.buffer.lock().unwrap().unmatched_headers(),
+                )),
                 SyncSliceStatus::ReceivedBodies(n) => {
                     self.block_height += n as u64;
                     Some(request_block_headers(self.block_height))
@@ -141,7 +152,7 @@ impl SyncWatcher {
             }
             SyncSliceStatus::ReceivedHeaders => {
                 buffer.set_status(SyncSliceStatus::AwaitingBodies);
-            },
+            }
             _ => {}
         }
     }

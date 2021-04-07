@@ -113,11 +113,18 @@ pub struct BlockchainSync {
 }
 
 impl BlockchainSync {
-    pub fn new(chain: Arc<Mutex<dyn BlockchainReadOnly>>, importer: Arc<Mutex<dyn Importer>>) -> Self {
+    pub fn new(
+        chain: Arc<Mutex<dyn BlockchainReadOnly>>,
+        importer: Arc<Mutex<dyn Importer>>,
+    ) -> Self {
         let buffer = Arc::new(Mutex::new(SyncBuffer::new(Arc::clone(&importer))));
         let watcher = Arc::new(Mutex::new(SyncWatcher::new(Arc::clone(&buffer))));
         let devp2p = Arc::new(Mutex::new(Devp2pHandler::new(Arc::clone(&chain))));
-        BlockchainSync { buffer, watcher, devp2p }
+        BlockchainSync {
+            buffer,
+            watcher,
+            devp2p,
+        }
     }
 
     pub fn is_syncing(&self) -> bool {

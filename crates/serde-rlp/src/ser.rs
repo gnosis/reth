@@ -236,11 +236,7 @@ impl<'a> serde::ser::SerializeStruct for &'a mut EthereumRlpSerializer {
 
     type Error = crate::error::ErrorKind;
 
-    fn serialize_field<T: ?Sized>(
-        &mut self,
-        _: &'static str,
-        value: &T,
-    ) -> Result<(), Self::Error>
+    fn serialize_field<T: ?Sized>(&mut self, _: &'static str, value: &T) -> Result<(), Self::Error>
     where
         T: serde::Serialize,
     {
@@ -257,11 +253,7 @@ impl<'a> serde::ser::SerializeStructVariant for &'a mut EthereumRlpSerializer {
 
     type Error = crate::error::ErrorKind;
 
-    fn serialize_field<T: ?Sized>(
-        &mut self,
-        _: &'static str,
-        _: &T,
-    ) -> Result<(), Self::Error>
+    fn serialize_field<T: ?Sized>(&mut self, _: &'static str, _: &T) -> Result<(), Self::Error>
     where
         T: serde::Serialize,
     {

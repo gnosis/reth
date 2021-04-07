@@ -1,7 +1,7 @@
 // Copyright 2020-2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use core::{BlockNumber, H256, U256, WireBlock};
+use core::{BlockNumber, WireBlock, H256, U256};
 use std::str::FromStr;
 
 use ethereum_forkid::{ForkHash, ForkId};

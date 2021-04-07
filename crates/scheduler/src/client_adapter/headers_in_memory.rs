@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::common_types::GetBlockHeaders;
-use core::{BlockBody, BlockHeader, BlockId, BlockNumber, BlockReceipt, H256, WireBlock};
+use core::{BlockBody, BlockHeader, BlockId, BlockNumber, BlockReceipt, WireBlock, H256};
 use interfaces::{
     blockchain::BlockchainReadOnly,
     importer::{Importer, ImporterInfo, ImporterStatus},
@@ -38,7 +38,13 @@ impl BlockchainReadOnly for HeadersInMemory {
         vec![] // TODO
     }
 
-    fn header_request(&self, block_id: BlockId, max_header: u64, skip: u64, reverse: bool) -> Vec<BlockHeader> {
+    fn header_request(
+        &self,
+        block_id: BlockId,
+        max_header: u64,
+        skip: u64,
+        reverse: bool,
+    ) -> Vec<BlockHeader> {
         vec![] // TODO
     }
 
@@ -61,7 +67,8 @@ impl BlockchainReadOnly for HeadersInMemory {
 
 impl Importer for HeadersInMemory {
     fn import_block(&mut self, block: &WireBlock) {
-        self.headers.insert(block.header.number, block.header.clone());
+        self.headers
+            .insert(block.header.number, block.header.clone());
     }
 
     fn import_ancient_block(&self) {

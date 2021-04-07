@@ -74,7 +74,8 @@ pub fn decode_get_block_headers(data: &[u8]) -> Result<GetBlockHeaders, DecoderE
 }
 
 fn encode_block_header(stream: &mut RlpStream, header: &BlockHeader) {
-    stream.begin_list(15)
+    stream
+        .begin_list(15)
         .append(&header.parent_hash)
         .append(&header.ommers_hash)
         .append(&header.beneficiary_address)

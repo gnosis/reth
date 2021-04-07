@@ -16,16 +16,15 @@ struct Person {
 
 #[test]
 fn struct_simple_test() -> serde_rlp::Result<()> {
-    
     #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
     struct Item {
-        a: String
+        a: String,
     }
 
     let item = Item { a: "cat".into() };
     let expected = vec![0xc4, 0x83, b'c', b'a', b't'];
     let out = serde_rlp::serialize(&item)?;
-    
+
     assert_eq!(out, expected);
 
     let decoded = serde_rlp::deserialize(&expected)?;
@@ -36,21 +35,20 @@ fn struct_simple_test() -> serde_rlp::Result<()> {
 
 #[test]
 fn struct_complex_test() -> serde_rlp::Result<()> {
-
     #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
     struct Item {
         a: String,
         b: u64,
-        c: ethereum_types::U256
+        c: ethereum_types::U256,
     }
 
-	let item = Item { 
+    let item = Item {
         a: "cat".into(),
         b: 1599u64,
-        c: U256::from(208090)
+        c: U256::from(208090),
     };
 
-	let out = serde_rlp::serialize(&item)?;
+    let out = serde_rlp::serialize(&item)?;
     let deserialized: Item = serde_rlp::deserialize(&out)?;
     assert_eq!(item, deserialized);
 

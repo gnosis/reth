@@ -17,7 +17,7 @@ extern crate rlp_derive;
 #[macro_use]
 extern crate log;
 
-pub mod  block_manager; 
+pub mod block_manager;
 pub mod client_adapter;
 pub mod common_types;
 pub mod scheduler;

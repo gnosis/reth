@@ -1,8 +1,6 @@
 # Copyright 2021 Gnosis Ltd.
 # SPDX-License-Identifier: Apache-2.0
 
-cargo-features = ["resolver"]
-
 [workspace]
 resolver = "2"
 members = [

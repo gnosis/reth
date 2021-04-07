@@ -3,14 +3,10 @@
 
 use core::{transaction::TypePayload, Address, Transaction, H256};
 use std::{
-    collections::{hash_map::Iter, HashSet},
+    collections::{hash_map::Iter, BinaryHeap, HashMap, HashSet},
     mem,
     sync::Arc,
-    time::Instant,
-};
-use std::{
-    collections::{BinaryHeap, HashMap},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use crate::{Error, Priority, ScoreTransaction, BUMP_SCORE_BY_12_5_PERC};
