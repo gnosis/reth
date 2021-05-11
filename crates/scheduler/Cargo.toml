@@ -20,4 +20,4 @@ rlp-derive = "0.1.0"
 log = "0.4"
 simple_logger = "1.11"
 interfaces = { path = "../interfaces", package="reth-interfaces"}
-core = { path = "../core", package="reth-core"}
+core ={ path = "../core", package="reth-core"}

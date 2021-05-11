@@ -44,6 +44,7 @@ pub fn encode_get_block_headers(request: &GetBlockHeaders) -> Vec<u8> {
     match request.block_id {
         BlockId::Number(number) => stream.append(&number),
         BlockId::Hash(hash) => stream.append(&hash),
+        BlockId::Latest => panic!("Please use blocks number or hash"),
     };
 
     stream.append(&request.max_headers).append(&request.skip);

@@ -1,10 +1,10 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use core::{Transaction, H256, U256};
-use std::{cmp, time::Instant};
+use reth_core::{Transaction, H256, U256};
+use std::{cmp, ops::Deref, time::Instant};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Priority {
     Local,
     Retracted,
@@ -26,6 +26,14 @@ pub struct ScoreTransaction {
 impl ScoreTransaction {
     pub fn hash(&self) -> H256 {
         self.transaction.hash()
+    }
+}
+
+impl Deref for ScoreTransaction {
+    type Target = Transaction;
+
+    fn deref(&self) -> &Self::Target {
+        &self.transaction
     }
 }
 

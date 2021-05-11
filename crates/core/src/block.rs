@@ -1,14 +1,13 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{Address, BlockNumber, Bloom, Keccak, Transaction, H160, H256, U256};
+use crate::{BlockNumber, Transaction, H160, H256};
 
-use serde::{Deserialize, Serialize};
-
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Hash, Eq)]
 pub enum BlockId {
     Number(BlockNumber),
     Hash(H256),
+    Latest,
 }
 
 #[derive(Clone, Debug, PartialEq)]

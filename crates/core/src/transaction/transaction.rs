@@ -1,7 +1,7 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 use super::{
-    signature::replay_protection, type_payload::PayloadTrait, Author, CallType, LegacyPayload,
+    signature::replay_protection, type_payload::PayloadTrait, Author, CallType,
     Signature, TxType, TypePayload,
 };
 use crate::{Address, Bytes, H256, U256, U64};
@@ -11,6 +11,7 @@ use keccak_hash::keccak;
 use rlp::DecoderError;
 
 pub type ChainId = u64;
+use std::hash::{Hash, Hasher};
 
 /// A transaction (formally, T) is a
 /// single cryptographically-signed instruction constructed by
@@ -66,6 +67,14 @@ impl Transaction {
             value,
             data,
         }
+    }
+
+    pub fn cost(&self) -> U256 {
+        let gas_price = match self.type_payload {
+            TypePayload::AccessList(ref al) => al.legacy_payload.gas_price,
+            TypePayload::Legacy(ref legacy) => legacy.gas_price,
+        };
+        self.gas_limit * gas_price + self.value
     }
 
     pub fn sign(&mut self, secret: &Secret) {
@@ -167,8 +176,23 @@ impl Transaction {
     }
 }
 
+impl PartialEq for Transaction {
+    fn eq(&self, other: &Self) -> bool {
+        self.hash() == other.hash()
+    }
+}
+
+impl Eq for Transaction {}
+
+impl Hash for Transaction {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.hash.hash(state);
+    }
+}
+
 /// Dummy address defined in EIP-86.
 pub const DUMMY_AUTHOR: (Address, Public) = (H160([0xff; 20]), H512([0xff; 64]));
+pub const DUMMY_AUTHOR1: (Address, Public) = (H160([0xfe; 20]), H512([0xfe; 64]));
 
 /// Legacy EIP-86 compatible empty signature.
 /// It is used in json tests
@@ -199,9 +223,9 @@ mod tests {
         *,
     };
     use crypto::publickey::{Generator, Public};
-    use ethereum_types::{Address, H160, H512, U256, U64};
+    use ethereum_types::{Address, H160, U256, U64};
     use rlp::{Rlp, RlpStream};
-    use rustc_hex::{FromHex, ToHex};
+    use rustc_hex::{FromHex};
 
     #[test]
     fn default_legacy_en_de() {

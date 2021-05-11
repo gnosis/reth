@@ -1,7 +1,7 @@
 // Copyright 2020-2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use core::{BlockBody, BlockHeader, BlockId, BlockNumber, BlockReceipt, H256};
+use reth_core::{BlockBody, BlockHeader, BlockId, BlockNumber, BlockReceipt, H256};
 
 /// Trait that allows getting blocks data
 pub trait BlockchainReadOnly: Send + Sync {

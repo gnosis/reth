@@ -1,4 +1,4 @@
-use core::{BlockNumber, H256};
+use reth_core::{BlockNumber, H256};
 
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0

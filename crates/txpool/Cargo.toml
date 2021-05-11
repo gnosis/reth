@@ -8,10 +8,25 @@ authors = ["Gnosis developers <developers@gnosis.io>"]
 edition = "2018"
 
 [dependencies]
-core = { path = "../core", package="reth-core", default-features = false }
-
+reth-core ={ path = "../core", package="reth-core", default-features = false }
+interfaces ={ path = "../interfaces", package="reth-interfaces", default-features = false }
+thiserror = "1.0"
+anyhow = "1.0"
+async-trait = "0.1"
+auto_impl = "0.4"
+clap = { version = "3.0.0-beta" }
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+# serde used for toml
+serde = { version = "1", features = ["derive"] }
+# configuration
+toml = "0.5"
+log = "0.4"
+parking_lot = "0.11"
 
 [dev-dependencies]
-core = { path = "../core", package="reth-core", features=["test_only"]}
-
-
+# override core and enable test_only flag for functionalities related to tests.
+reth-core ={ path = "../core", package="reth-core", features=["test_only"]}
+interfaces ={ path = "../interfaces", package="reth-interfaces", features=["test_only"]}
+tokio-test = "*"
+futures-await-test = "0.3.0"

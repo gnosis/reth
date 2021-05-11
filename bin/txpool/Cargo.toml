@@ -1,0 +1,30 @@
+# Copyright 2021 Gnosis Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "txpool"
+version = "1.0.0-alpha"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+reth-core ={ path = "../../crates/core", package="reth-core", default-features = false }
+interfaces ={ path = "../../crates/interfaces", package="reth-interfaces", default-features = false }
+txpool ={ path = "../../crates/txpool", package="reth-txpool" }
+thiserror = "1.0"
+anyhow = "1.0"
+clap = { version = "3.0.0-beta" }
+tokio = { version = "1", features = ["full"] }
+ethereum-interfaces = { git = "https://github.com/ledgerwatch/interfaces", default-features = false, features = ["txpool"] }
+# serde used for toml
+serde = { version = "1", features = ["derive"] }
+# configuration
+toml = "0.5"
+log = "0.4"
+
+
+
+[dev-dependencies]
+# override core and enable test_only flag for functionalities related to tests.
+reth-core ={ path = "../../crates/core", package="reth-core", features=["test_only"]}
