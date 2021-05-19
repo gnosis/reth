@@ -7,3 +7,4 @@ pub mod importer;
 pub mod snapshot;
 pub mod world_state;
 pub mod txpool;
+pub mod sentry;

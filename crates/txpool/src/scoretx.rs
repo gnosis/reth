@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use reth_core::{Transaction, H256, U256};
-use std::{cmp, ops::Deref, time::Instant};
+use std::{cmp, ops::Deref, sync::Arc, time::Instant};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Priority {
@@ -16,16 +16,15 @@ pub type Score = U256;
 #[derive(Debug)]
 pub struct ScoreTransaction {
     pub score: Score, // mostly depends on gas_price but it is influenced by priority if tx is Local/Regular/Reinserted
-    pub hash: H256,   // identifier of transaction
     pub timestamp: Instant, // it it used to remove stale transaction
     pub priority: Priority, // Priority of transaction
 
-    pub transaction: Transaction, // Transaction payload.
+    pub tx: Arc<Transaction>, // Transaction payload.
 }
 
 impl ScoreTransaction {
     pub fn hash(&self) -> H256 {
-        self.transaction.hash()
+        self.tx.hash()
     }
 }
 
@@ -33,7 +32,7 @@ impl Deref for ScoreTransaction {
     type Target = Transaction;
 
     fn deref(&self) -> &Self::Target {
-        &self.transaction
+        &self.tx
     }
 }
 
@@ -42,8 +41,7 @@ impl Clone for ScoreTransaction {
         ScoreTransaction {
             priority: self.priority,
             score: self.score.clone(),
-            hash: self.hash,
-            transaction: self.transaction.clone(),
+            tx: self.tx.clone(),
             timestamp: Instant::now(),
         }
     }

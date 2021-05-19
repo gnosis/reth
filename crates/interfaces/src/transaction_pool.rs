@@ -3,7 +3,6 @@
 
 pub trait TransactionPool {
 
-
     /// Register new broadcaster that notifies when new transaction is added to pool
     fn register_broadcaster(&self);
     fn unregister_broadcaster(&self);

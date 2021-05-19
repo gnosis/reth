@@ -16,12 +16,17 @@ thiserror = "1.0"
 anyhow = "1.0"
 clap = { version = "3.0.0-beta" }
 tokio = { version = "1", features = ["full"] }
-ethereum-interfaces = { git = "https://github.com/ledgerwatch/interfaces", default-features = false, features = ["txpool"] }
+grpc-interfaces = { git = "https://github.com/ledgerwatch/interfaces", package="ethereum-interfaces", default-features = false, features = ["txpool"] }
 # serde used for toml
 serde = { version = "1", features = ["derive"] }
 # configuration
 toml = "0.5"
 log = "0.4"
+async-trait = "0.1"
+auto_impl = "0.4"
+tonic = { version = "0.4", features = ["tls"]}
+prost = "0.7"
+prost-types = "0.7"
 
 
 

@@ -19,11 +19,22 @@ pub trait TransactionPool: 'static {
     /// Remove transaction from tx
     async fn remove(&self, hashes: Vec<H256>);
 
-    /// When we are fully synced, we should get all transaction
-    /// from reverted blocks and reinclude them in pool and remove all tx that we found in new block.
+    /// When we are fully synced, we should get all transaction from reverted blocks
+    /// to reinclude them in pool and remove all tx that were included in new block.
     async fn block_update(&self, chain: &BlockUpdate);
 
-    // support for config set/get? Support for status rpc?
-    // support for local tx?
+    /* support for local tx from jsonrpc?
+    */
+
+    /* config setters:
+    fn raise_min_gas_price(&mut self);
+    fn raise_block_gas_limit(&mut self);
+    */
+
+    /* info getters
+    fn worst_gas_price_tx(&self);
+    fn next_account_nonce(&self);
+    fn status(&self);
+    */
 
 }

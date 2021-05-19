@@ -32,8 +32,7 @@ impl Pool {
     pub fn new(config: Arc<Config>, world_state: Arc<dyn WorldState>) -> Pool {
         Pool {
             txs: Arc::new(RwLock::new(Transactions::new(
-                config.per_account.unwrap(),
-                config.max.unwrap(),
+                config.clone(),
                 world_state,
             ))),
             config: config.clone(),
@@ -46,7 +45,7 @@ impl Pool {
     }
 
     /// Create pending blocks
-    pub async fn new_pending_block(&self) -> Vec<Arc<ScoreTransaction>> {
+    pub async fn new_pending_block(&self) -> Vec<Arc<Transaction>> {
         //iterate over sorted tx to create new pending block tx
         // Check max nonce
         let sorted = self.txs.write().await.sorted_vec();
@@ -61,7 +60,7 @@ impl Pool {
                 .entry(author)
                 .or_insert_with(|| 0 /* TODO self.world_state.account_info().nonce+1*/);
             if *nonce == tx.nonce.as_u64() {
-                out.push(tx);
+                out.push(tx.tx.clone());
                 *nonce = *nonce + 1;
             }
         }
@@ -94,7 +93,7 @@ impl TransactionPool for Pool {
             handlers.push(async move {
                 let mut tx = Transaction::decode(&raw_tx)?;
                 tx.recover_author()?;
-                txpool.write().await.insert(tx, false).await?;
+                txpool.write().await.insert(Arc::new(tx), false).await?;
                 Ok(())
             });
         }
@@ -110,7 +109,7 @@ impl TransactionPool for Pool {
                     .read()
                     .await
                     .find(Find::TxByHash(hash))
-                    .map(|tx| tx.transaction.encode()),
+                    .map(|tx| tx.encode()),
             )
         }
         out

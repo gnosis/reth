@@ -9,7 +9,7 @@ use rlp::Rlp;
 #[async_trait]
 pub trait WorldState: Send + Sync {
     /// get account info (balance,nonce) from newest world state
-    async fn account_info(&self, block_id: BlockId, account: &Address) -> Option<AccountInfo>;
+    async fn account_info(&self, block_id: BlockId, account: Address) -> Option<AccountInfo>;
 }
 
 #[derive(Copy, Clone)]
@@ -24,13 +24,13 @@ impl AccountInfo {
     }
 }
 
-// When new block is inserted we or when reorg happens this structure contains everything we need to remove
+// When new block is inserted or when reorg happens this structure contains everything we need to remove/reinsert.
 pub struct BlockUpdate {
     pub old_hash: H256,
     pub new_hash: H256,
     pub reverted_tx: Vec<Vec<u8>>,
     pub reverted_accounts: Vec<(Address,AccountInfo)>,
-    pub appliend_accounts: Vec<(Address,AccountInfo)>,
+    pub applied_accounts: Vec<(Address,AccountInfo)>,
 }
 
 #[cfg(any(test, feature = "test_only"))]
@@ -80,7 +80,7 @@ pub mod helper {
 
     #[async_trait]
     impl WorldState for WorldStateTest {
-        async fn account_info(&self, block_id: BlockId, account: &Address) -> Option<AccountInfo> {
+        async fn account_info(&self, block_id: BlockId, account: Address) -> Option<AccountInfo> {
             self.accounts_by_block
                 .read()
                 .get(&block_id)?
