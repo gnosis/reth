@@ -1,11 +1,9 @@
 use async_trait::async_trait;
-use grpc_interfaces::txpool::{
-    txpool_control_client::TxpoolControlClient, AccountInfoRequest,
-};
+use grpc_interfaces::txpool::{txpool_control_client::TxpoolControlClient, AccountInfoRequest};
 use interfaces::world_state::{AccountInfo, WorldState};
 use reth_core::BlockId;
-use tonic::{transport::Channel};
 use tokio::sync::Mutex;
+use tonic::transport::Channel;
 
 pub struct GrpcWorldState {
     client: Mutex<TxpoolControlClient<Channel>>,
@@ -29,10 +27,12 @@ impl WorldState for GrpcWorldState {
         // grpc supports only block_id by hash
         let id = match block_id {
             BlockId::Latest | BlockId::Number(_) => unimplemented!(),
-            BlockId::Hash(hash) => hash, 
+            BlockId::Hash(hash) => hash,
         };
         let response = self
-            .client.lock().await
+            .client
+            .lock()
+            .await
             .account_info(AccountInfoRequest {
                 block_hash: Some(id.into()),
                 account: Some(account.into()),

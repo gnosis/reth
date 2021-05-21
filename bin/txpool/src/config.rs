@@ -17,28 +17,32 @@ pub const MAX_PENDING_TX_REMOVALS: usize = 100;
 //     pub max_tx_count_global: usize,
 // }
 
-
-#[derive(Clap,Clone)]
+#[derive(Clap, Clone)]
 #[clap(version = "1.0", author = "Gnosis Devs")]
 #[clap(setting = AppSettings::ColoredHelp)]
 pub struct Opts {
     /// Sets a custom config file. Could have been an Option<T> with no default too
-    #[clap(short, long, default_value = "default.config.tml", about = "Config file")]
+    #[clap(
+        short,
+        long,
+        default_value = "default.config.tml",
+        about = "Config file"
+    )]
     pub config: String,
-/*  #[clap(about = "Limit number of transaction per account")]
-    pub per_account: Option<usize>,
-    #[clap(about= "Set maximum number of transaction in pool")]
-    pub max: Option<usize>,
-    /// A level of verbosity, and can be used multiple times
-    #[clap(short, long, about = "Rust log")]
-    pub log: Option<String>,
+    /*  #[clap(about = "Limit number of transaction per account")]
+        pub per_account: Option<usize>,
+        #[clap(about= "Set maximum number of transaction in pool")]
+        pub max: Option<usize>,
+        /// A level of verbosity, and can be used multiple times
+        #[clap(short, long, about = "Rust log")]
+        pub log: Option<String>,
 
-    //Connections
-    #[clap(about = "devp2p rpc connector. It is needed for inbound connection")]
-    pub devp2p: Option<String>,
-    #[clap(about = "World state connection. We only need nonce from it.")]
-    pub world_state: Option<String>,
-*/
+        //Connections
+        #[clap(about = "devp2p rpc connector. It is needed for inbound connection")]
+        pub devp2p: Option<String>,
+        #[clap(about = "World state connection. We only need nonce from it.")]
+        pub world_state: Option<String>,
+    */
 }
 
 #[derive(Deserialize)]
@@ -48,7 +52,6 @@ pub struct Config {
     pub per_account: Option<usize>,
     pub max: Option<usize>,
 }
-
 
 impl Default for Config {
     fn default() -> Config {

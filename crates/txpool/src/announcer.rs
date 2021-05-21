@@ -1,7 +1,6 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-
 use crate::Error;
 use async_trait::async_trait;
 use reth_core::Transaction;

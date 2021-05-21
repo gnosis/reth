@@ -33,7 +33,8 @@ impl Account {
 
     // remove transaction and return is_empty
     pub fn remove(&mut self, hash: &H256) -> bool {
-        let index = self.transactions
+        let index = self
+            .transactions
             .iter()
             .position(|item| item.hash() == *hash)
             .expect("expect to found tx in by_account struct");

@@ -1,11 +1,9 @@
-
-
 // Copyright 2020-2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use reth_core::{H256};
-use async_trait::async_trait;
 use super::world_state::BlockUpdate;
+use async_trait::async_trait;
+use reth_core::H256;
 
 /// Trait that allows getting blocks data
 #[async_trait]
@@ -24,7 +22,7 @@ pub trait TransactionPool: 'static {
     async fn block_update(&self, chain: &BlockUpdate);
 
     /* support for local tx from jsonrpc?
-    */
+     */
 
     /* config setters:
     fn raise_min_gas_price(&mut self);
@@ -36,5 +34,4 @@ pub trait TransactionPool: 'static {
     fn next_account_nonce(&self);
     fn status(&self);
     */
-
 }

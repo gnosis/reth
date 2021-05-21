@@ -296,7 +296,10 @@ impl Transactions {
 mod tests {
     use super::*;
     use interfaces::world_state::helper::WorldStateTest;
-    use reth_core::transaction::{LegacyPayload, TypePayload, transaction::{fake_sign, DUMMY_AUTHOR, DUMMY_AUTHOR1}};
+    use reth_core::transaction::{
+        transaction::{fake_sign, DUMMY_AUTHOR, DUMMY_AUTHOR1},
+        LegacyPayload, TypePayload,
+    };
     use tokio_test::assert_ok;
 
     /// 1000 gs per account that can be found in WorldStateTest round up to around 22 score.

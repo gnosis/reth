@@ -4,7 +4,7 @@
 pub mod blockchain;
 pub mod devp2p;
 pub mod importer;
-pub mod snapshot;
-pub mod world_state;
-pub mod txpool;
 pub mod sentry;
+pub mod snapshot;
+pub mod txpool;
+pub mod world_state;

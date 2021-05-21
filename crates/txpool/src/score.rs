@@ -1,7 +1,7 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use reth_core::{H256, Transaction, U256, transaction::TypePayload};
+use reth_core::{transaction::TypePayload, Transaction, H256, U256};
 use std::{cmp, ops::Deref, sync::Arc, time::Instant};
 
 #[derive(Debug, Clone, Copy, PartialEq)]

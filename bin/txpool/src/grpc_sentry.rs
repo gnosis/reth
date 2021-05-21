@@ -1,5 +1,5 @@
 use anyhow::Result;
-use grpc_interfaces::sentry::{sentry_client::SentryClient};
+use grpc_interfaces::sentry::sentry_client::SentryClient;
 use log::trace;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -25,7 +25,7 @@ impl GrpcSentry {
             .receive_tx_messages(Request::new(()))
             .await?
             .into_inner();
-            
+
         while let Some(tx) = stream.message().await? {
             // TODO
             trace!("Received tx msg");

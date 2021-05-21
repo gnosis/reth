@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use async_trait::async_trait;
-use reth_core::{Address, BlockId, H256, Transaction, U256};
+use reth_core::{Address, BlockId, Transaction, H256, U256};
 use rlp::Rlp;
 
 /// Trait that allows getting blocks data
@@ -29,8 +29,8 @@ pub struct BlockUpdate {
     pub old_hash: H256,
     pub new_hash: H256,
     pub reverted_tx: Vec<Vec<u8>>,
-    pub reverted_accounts: Vec<(Address,AccountInfo)>,
-    pub applied_accounts: Vec<(Address,AccountInfo)>,
+    pub reverted_accounts: Vec<(Address, AccountInfo)>,
+    pub applied_accounts: Vec<(Address, AccountInfo)>,
 }
 
 #[cfg(any(test, feature = "test_only"))]

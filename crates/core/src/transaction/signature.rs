@@ -1,6 +1,5 @@
 /// Copyright 2021 Gnosis Ltd.
 /// SPDX-License-Identifier: Apache-2.0
-
 use super::*;
 use crypto::publickey::{self, public_to_address, recover, Signature as CryptoSig};
 use ethereum_types::{Address, BigEndianHash, Public, H256, U256};

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use super::{
-    signature::replay_protection, type_payload::PayloadTrait, Author, CallType,
-    Signature, TxType, TypePayload,
+    signature::replay_protection, type_payload::PayloadTrait, Author, CallType, Signature, TxType,
+    TypePayload,
 };
 use crate::{Address, Bytes, H256, U256, U64};
 use crypto::publickey::{self, Secret};
@@ -226,7 +226,7 @@ mod tests {
     use crypto::publickey::{Generator, Public};
     use ethereum_types::{Address, H160, U256, U64};
     use rlp::{Rlp, RlpStream};
-    use rustc_hex::{FromHex};
+    use rustc_hex::FromHex;
 
     #[test]
     fn default_legacy_en_de() {

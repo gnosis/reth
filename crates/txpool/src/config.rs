@@ -16,7 +16,6 @@ pub struct Config {
     pub max: usize,
 }
 
-
 impl Default for Config {
     fn default() -> Config {
         Config {
@@ -25,4 +24,3 @@ impl Default for Config {
         }
     }
 }
-

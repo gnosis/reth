@@ -7,17 +7,19 @@ use std::sync::Arc;
 use toml;
 use txpool::Pool;
 
-use crate::config::*;
-use crate::grpc_txpool::GrpcPool;
-use crate::grpc_world_state::GrpcWorldState;
-use crate::{config::Opts, grpc_sentry::GrpcSentry};
-use crate::announcer::AnnouncerImpl;
+use crate::{
+    announcer::AnnouncerImpl,
+    config::{Opts, *},
+    grpc_sentry::GrpcSentry,
+    grpc_txpool::GrpcPool,
+    grpc_world_state::GrpcWorldState,
+};
 
+mod announcer;
 mod config;
 mod grpc_sentry;
 mod grpc_txpool;
 mod grpc_world_state;
-mod announcer;
 
 #[tokio::main]
 async fn main() {
@@ -42,7 +44,7 @@ async fn main() {
     let annon = Arc::new(AnnouncerImpl::new());
 
     //Create objects
-    let pool = Arc::new(Pool::new(config, world_state,annon.clone()));
+    let pool = Arc::new(Pool::new(config, world_state, annon.clone()));
 
     let sentry_pool = pool.clone();
 
@@ -52,7 +54,7 @@ async fn main() {
     });
 
     // start grpc
-    let pool = GrpcPool::new(pool,annon);
+    let pool = GrpcPool::new(pool, annon);
     pool.start().await
 
     // end it

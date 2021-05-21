@@ -1,10 +1,13 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{Announcer, Find, ScoreTransaction, Transactions, config::Config, Error};
+use crate::{config::Config, Announcer, Error, Find, ScoreTransaction, Transactions};
 use async_trait::async_trait;
 use futures::future::join_all;
-use interfaces::{txpool::{TransactionPool}, world_state::{BlockUpdate, WorldState}};
+use interfaces::{
+    txpool::TransactionPool,
+    world_state::{BlockUpdate, WorldState},
+};
 use reth_core::{Address, Transaction, H256, U256};
 use std::{
     collections::{HashMap, HashSet},
@@ -28,12 +31,13 @@ pub struct Pool {
 
 impl Pool {
     // currently hardcoded
-    pub fn new(config: Arc<Config>, world_state: Arc<dyn WorldState>, announcer: Arc<dyn Announcer>) -> Pool {
+    pub fn new(
+        config: Arc<Config>,
+        world_state: Arc<dyn WorldState>,
+        announcer: Arc<dyn Announcer>,
+    ) -> Pool {
         Pool {
-            txs: Arc::new(RwLock::new(Transactions::new(
-                config.clone(),
-                world_state,
-            ))),
+            txs: Arc::new(RwLock::new(Transactions::new(config.clone(), world_state))),
             config: config.clone(),
             announcer,
         }
@@ -137,8 +141,8 @@ impl TransactionPool for Pool {
 #[allow(non_snake_case)]
 mod tests {
     use super::*;
-    use interfaces::world_state::helper::WorldStateTest;
     use crate::announcer::test::AnnouncerTest;
+    use interfaces::world_state::helper::WorldStateTest;
 
     #[tokio::test]
     async fn smoke_test() {
