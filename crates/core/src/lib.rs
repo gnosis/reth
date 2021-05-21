@@ -3,13 +3,17 @@
 
 mod account;
 mod block;
+mod grpc;
 pub mod transaction;
 
 // large integers
-pub use ethereum_types::{U256, U64};
+pub use ethereum_types::{U128, U256, U512, U64};
 
 // special purpose hashes
-pub use ethereum_types::{Address, Bloom, H160, H256};
+pub use ethereum_types::{Address, Bloom, H128, H160, H256, H512};
+
+// grp conversion
+pub use grpc::*;
 
 pub type Keccak = H256;
 

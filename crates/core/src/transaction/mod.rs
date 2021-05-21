@@ -1,5 +1,6 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
+
 pub mod access_list_payload;
 pub mod legacy_payload;
 pub mod signature;

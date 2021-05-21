@@ -1,5 +1,6 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
+
 use ethereum_types::U64;
 
 #[derive(Debug, Copy, Clone)]

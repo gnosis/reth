@@ -1,7 +1,7 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use reth_core::{Transaction, H256, U256};
+use reth_core::{H256, Transaction, U256, transaction::TypePayload};
 use std::{cmp, ops::Deref, sync::Arc, time::Instant};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -25,6 +25,24 @@ pub struct ScoreTransaction {
 impl ScoreTransaction {
     pub fn hash(&self) -> H256 {
         self.tx.hash()
+    }
+
+    pub fn new(tx: Arc<Transaction>, priority: Priority) -> ScoreTransaction {
+        let score = match tx.type_payload {
+            TypePayload::AccessList(ref al) => al.legacy_payload.gas_price,
+            TypePayload::Legacy(ref legacy) => legacy.gas_price,
+        };
+        let score = match priority {
+            Priority::Local => score << 15,
+            Priority::Regular => score << 10,
+            Priority::Retracted => score,
+        };
+        ScoreTransaction {
+            tx: tx,
+            priority,
+            score,
+            timestamp: Instant::now(),
+        }
     }
 }
 

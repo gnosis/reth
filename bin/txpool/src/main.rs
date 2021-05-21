@@ -1,27 +1,23 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use std::{error::Error, str::FromStr};
-
-// Copyright 2021 Gnosis Ltd.
-// SPDX-License-Identifier: Apache-2.0
 use clap::Clap;
-use interfaces::txpool::TransactionPool;
-use log::{info, trace};
-use std::{sync::Arc, time::Duration};
-use tokio::time::sleep;
+use log::*;
+use std::sync::Arc;
 use toml;
-use txpool::{Config as TxPoolConfig, Pool};
+use txpool::Pool;
 
 use crate::config::*;
 use crate::grpc_txpool::GrpcPool;
 use crate::grpc_world_state::GrpcWorldState;
-use crate::{config::Opts, grpc_devp2p::GrpcDevp2p};
+use crate::{config::Opts, grpc_sentry::GrpcSentry};
+use crate::announcer::AnnouncerImpl;
 
 mod config;
-mod grpc_devp2p;
+mod grpc_sentry;
 mod grpc_txpool;
 mod grpc_world_state;
+mod announcer;
 
 #[tokio::main]
 async fn main() {
@@ -35,24 +31,28 @@ async fn main() {
         panic!("World state and devp2p needs to be set in config");
     }
     let world_state_uri = config.world_state.as_ref().unwrap().clone();
-    let _devp2p_uri = config.devp2p.as_ref().unwrap().clone();
+    let sentry_uri = config.devp2p.as_ref().unwrap().clone();
 
     let world_state = Arc::new(GrpcWorldState::new(world_state_uri).await);
-    let devp2p = Arc::new(GrpcDevp2p {});
+    let sentry = Arc::new(GrpcSentry::new(sentry_uri).await);
 
     let config = Arc::new(config.into());
 
-    //Create objects
-    let pool = Arc::new(Pool::new(config, world_state));
+    // announcer for inclusion and removed of tx. Used in GrpcTxPool
+    let annon = Arc::new(AnnouncerImpl::new());
 
-    let pool2 = pool.clone();
-    // connect devp2p to pool
+    //Create objects
+    let pool = Arc::new(Pool::new(config, world_state,annon.clone()));
+
+    let sentry_pool = pool.clone();
+
+    // rust sentry
     tokio::spawn(async move {
-        let _ = pool2.import(devp2p.get_transaction().await);
+        let _ = sentry.run(sentry_pool).await;
     });
 
     // start grpc
-    let pool = GrpcPool::new(pool);
+    let pool = GrpcPool::new(pool,annon);
     pool.start().await
 
     // end it

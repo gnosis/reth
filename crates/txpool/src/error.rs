@@ -21,5 +21,9 @@ pub enum Error {
     #[error("Author unknown.")]
     TxAuthorUnknown,
     #[error("Runtime error.")]
-    RuntimeError
+    RuntimeError,
+    #[error("Transaction replaced on inclusion")]
+    RemovedTxReplaced,
+    #[error("Transaction removed on demand")]
+    RemovedTxOnDemand,
 }

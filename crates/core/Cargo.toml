@@ -23,3 +23,4 @@ rlp = "0.5.0"
 rustc-hex = "2.1.0"
 bytes = "1"
 crypto = { version="0.8.0", package = "parity-crypto", features=["publickey"] }
+grpc-interfaces = { git = "https://github.com/ledgerwatch/interfaces", rev ="08c32a", package="ethereum-interfaces", default-features = false}
