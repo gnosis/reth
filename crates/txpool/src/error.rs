@@ -26,4 +26,8 @@ pub enum Error {
     RemovedTxReplaced,
     #[error("Transaction removed on demand")]
     RemovedTxOnDemand,
+    #[error("Internal error. Account not found")]
+    InternalAccountNotFound,
+    #[error("Internal error. Account info is obsolete")]
+    InternalAccountObsolete,
 }

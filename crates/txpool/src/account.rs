@@ -27,6 +27,10 @@ impl Account {
         &self.transactions
     }
 
+    pub fn info(&self) -> &AccountInfo {
+        &self.info
+    }
+
     pub fn set_info(&mut self, info: AccountInfo) {
         self.info = info;
     }

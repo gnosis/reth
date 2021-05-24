@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use async_trait::async_trait;
-use reth_core::{Address, BlockId, Transaction, H256, U256};
-use rlp::Rlp;
+use reth_core::{Address, BlockId, H256, U256};
 
 /// Trait that allows getting blocks data
 #[async_trait]
@@ -12,7 +11,7 @@ pub trait WorldState: Send + Sync {
     async fn account_info(&self, block_id: BlockId, account: Address) -> Option<AccountInfo>;
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct AccountInfo {
     pub balance: U256,
     pub nonce: u64,
@@ -36,7 +35,7 @@ pub struct BlockUpdate {
 #[cfg(any(test, feature = "test_only"))]
 pub mod helper {
     use parking_lot::RwLock;
-    use reth_core::transaction::transaction::{fake_sign, DUMMY_AUTHOR, DUMMY_AUTHOR1};
+    use reth_core::transaction::transaction::{DUMMY_AUTHOR, DUMMY_AUTHOR1};
     use std::{collections::HashMap, sync::Arc};
 
     use super::*;
@@ -46,13 +45,13 @@ pub mod helper {
     }
 
     impl WorldStateTest {
-        pub fn new_empty() -> Arc<dyn WorldState> {
+        pub fn new_empty() -> Arc<Self> {
             Arc::new(WorldStateTest {
                 accounts_by_block: RwLock::new(HashMap::new()),
             })
         }
 
-        pub fn new_dummy() -> Arc<dyn WorldState> {
+        pub fn new_dummy() -> Arc<Self> {
             let wst = Arc::new(WorldStateTest {
                 accounts_by_block: RwLock::new(HashMap::new()),
             });
@@ -75,6 +74,14 @@ pub mod helper {
                 .entry(id)
                 .or_default()
                 .insert(account, info);
+        }
+
+        pub fn latest_account(&self, account: Address) -> Option<AccountInfo> {
+            self.accounts_by_block
+                .read()
+                .get(&BlockId::Latest)?
+                .get(&account)
+                .cloned()
         }
     }
 

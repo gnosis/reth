@@ -26,12 +26,6 @@ impl GrpcPool {
     pub fn new(pool: Arc<Pool>, announcer: Arc<AnnouncerImpl>) -> Self {
         Self { pool, announcer }
     }
-
-    pub async fn start(&self) {
-        loop {
-            time::sleep(Duration::from_secs(100)).await;
-        }
-    }
 }
 
 #[async_trait]

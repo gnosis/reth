@@ -124,10 +124,11 @@ impl Transaction {
         }
     }
 
-    pub fn recover_author(&mut self) -> Result<(), publickey::Error> {
+    pub fn recover_author(&mut self) -> Result<(H160, H512), publickey::Error> {
         let signature_hash = keccak(TypePayload::encode(self, true));
-        self.author = Some(self.signature.recover_author(&signature_hash)?);
-        Ok(())
+        let author = self.signature.recover_author(&signature_hash)?;
+        self.author = Some(author);
+        Ok(author)
     }
 
     pub fn has_author(&self) -> bool {

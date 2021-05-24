@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use clap::Clap;
+use grpc_interfaces::txpool::txpool_server::{Txpool, TxpoolServer};
 use log::*;
 use std::sync::Arc;
 use toml;
+use tonic::transport::Server;
 use txpool::Pool;
 
 use crate::{
@@ -21,31 +23,51 @@ mod grpc_sentry;
 mod grpc_txpool;
 mod grpc_world_state;
 
-#[tokio::main]
-async fn main() {
-    info!("Starting TXPOOL");
-
+pub async fn configure() -> Config {
     let config: Config =
         toml::from_str(&std::fs::read_to_string(Opts::parse().config).unwrap_or_default())
             .unwrap_or_default();
 
-    if config.world_state.is_none() || config.devp2p.is_none() {
-        panic!("World state and devp2p needs to be set in config");
-    }
-    let world_state_uri = config.world_state.as_ref().unwrap().clone();
-    let sentry_uri = config.devp2p.as_ref().unwrap().clone();
+    config
+        .serve_address
+        .as_ref()
+        .unwrap_or_else(|| panic!("Config should contain serve address"));
+    config
+        .world_state
+        .as_ref()
+        .unwrap_or_else(|| panic!("Config should contain world state uri"));
+    config
+        .sentry
+        .as_ref()
+        .unwrap_or_else(|| panic!("Config should contain sentry uri"));
 
-    let world_state = Arc::new(GrpcWorldState::new(world_state_uri).await);
-    let sentry = Arc::new(GrpcSentry::new(sentry_uri).await);
+    config
+}
 
-    let config = Arc::new(config.into());
+pub async fn init(config: Arc<Config>) -> (Arc<GrpcSentry>, Arc<Pool>, GrpcPool) {
+    let world_state =
+        Arc::new(GrpcWorldState::new(config.world_state.as_ref().unwrap().clone()).await);
+    let sentry = Arc::new(GrpcSentry::new(config.sentry.as_ref().unwrap().clone()).await);
+
+    // to pool config
+    let config: Arc<txpool::Config> = Arc::new(config.as_ref().clone().into());
 
     // announcer for inclusion and removed of tx. Used in GrpcTxPool
     let annon = Arc::new(AnnouncerImpl::new());
 
     //Create objects
-    let pool = Arc::new(Pool::new(config, world_state, annon.clone()));
+    let pool = Arc::new(Pool::new(config, world_state.clone(), annon.clone()));
 
+    let pool_server = GrpcPool::new(pool.clone(), annon.clone());
+    (sentry, pool, pool_server)
+}
+
+pub async fn run(
+    config: Arc<Config>,
+    sentry: Arc<GrpcSentry>,
+    pool: Arc<Pool>,
+    pool_server: GrpcPool,
+) {
     let sentry_pool = pool.clone();
 
     // rust sentry
@@ -53,16 +75,27 @@ async fn main() {
         let _ = sentry.run(sentry_pool).await;
     });
 
-    // start grpc
-    let pool = GrpcPool::new(pool, annon);
-    pool.start().await
+    //TODO from config
+    let addr = "[::1]:50051".parse().unwrap();
 
-    // end it
+    // start grpc server
+    let _res = Server::builder()
+        .add_service(TxpoolServer::new(pool_server))
+        .serve(addr)
+        .await;
+
+    //TODO res; should we wait or not
 }
 
-#[cfg(test)]
-mod test {
+#[tokio::main]
+async fn main() {
+    info!("Starting TXPOOL");
 
-    #[test]
-    fn pool_insert_delete() {}
+    let config = Arc::new(configure().await);
+
+    let (sentry, pool, pool_service) = init(config.clone()).await;
+
+    run(config, sentry, pool, pool_service).await;
+
+    //cleanup
 }

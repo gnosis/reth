@@ -6,9 +6,8 @@ use reth_core::Transaction;
 use tokio::sync::{mpsc::Sender, RwLock};
 use tonic::Status;
 use txpool::{Announcer, Error};
-/// It is currently simplified and `removed` announcement is not implemented.
-/// TODO
 
+/// It is currently simplified announcer.
 pub struct AnnouncerImpl {
     subscribers: RwLock<Vec<Sender<Result<OnAddReply, Status>>>>,
 }

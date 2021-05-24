@@ -45,9 +45,10 @@ pub struct Opts {
     */
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct Config {
-    pub devp2p: Option<String>,
+    pub serve_address: Option<String>,
+    pub sentry: Option<String>,
     pub world_state: Option<String>,
     pub per_account: Option<usize>,
     pub max: Option<usize>,
@@ -56,7 +57,8 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Config {
         Config {
-            devp2p: None,
+            serve_address: None,
+            sentry: None,
             world_state: None,
             per_account: Some(20),
             max: Some(10000),
