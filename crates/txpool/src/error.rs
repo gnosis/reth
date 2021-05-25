@@ -26,6 +26,14 @@ pub enum Error {
     RemovedTxReplaced,
     #[error("Transaction removed on demand")]
     RemovedTxOnDemand,
+    #[error("Transaction removed by timeout")]
+    RemovedTxTimeout,
+    #[error("Transaction removed, account balance cant fund this tx")]
+    RemovedTxUnfunded,
+    #[error("Transaction removed, max pool limit hit, and this is one of worst tx in pool")]
+    RemovedTxLimitHit,
+    #[error("On new block. Nonce is unsufficient transaction probably included in block")]
+    OnNewBlockNonce,
     #[error("Internal error. Account not found")]
     InternalAccountNotFound,
     #[error("Internal error. Account info is obsolete")]

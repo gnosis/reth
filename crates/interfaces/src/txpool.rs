@@ -21,9 +21,6 @@ pub trait TransactionPool: 'static {
     /// to reinclude them in pool and remove all tx that were included in new block.
     async fn block_update(&self, chain: &BlockUpdate);
 
-    /* support for local tx from jsonrpc?
-     */
-
     /* config setters:
     fn raise_min_gas_price(&mut self);
     fn raise_block_gas_limit(&mut self);

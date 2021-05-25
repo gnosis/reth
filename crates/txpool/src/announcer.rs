@@ -10,6 +10,8 @@ use std::sync::Arc;
 pub trait Announcer: Send + Sync {
     async fn inserted(&self, tx: Arc<Transaction>);
 
+    async fn reinserted(&self, tx: Arc<Transaction>);
+
     async fn removed(&self, tx: Arc<Transaction>, error: Error);
 }
 
@@ -29,5 +31,7 @@ pub mod test {
         async fn inserted(&self, _tx: Arc<Transaction>) {}
 
         async fn removed(&self, _tx: Arc<Transaction>, _error: Error) {}
+
+        async fn reinserted(&self, tx: Arc<Transaction>) {}
     }
 }

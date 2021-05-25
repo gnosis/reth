@@ -1,6 +1,8 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
+use std::time::Duration;
+
 use clap::*;
 use serde::Deserialize;
 use txpool::Config as TxPoolConfig;
@@ -52,6 +54,8 @@ pub struct Config {
     pub world_state: Option<String>,
     pub per_account: Option<usize>,
     pub max: Option<usize>,
+    pub tx_timeout: Option<Duration>,
+    pub serve_ip: Option<String>,
 }
 
 impl Default for Config {
@@ -62,6 +66,8 @@ impl Default for Config {
             world_state: None,
             per_account: Some(20),
             max: Some(10000),
+            tx_timeout: Some(Duration::from_secs(300)),
+            serve_ip: Some("[::1]:50001".into()),
         }
     }
 }
@@ -71,6 +77,7 @@ impl Into<TxPoolConfig> for Config {
         TxPoolConfig {
             per_account: self.per_account.unwrap_or(16),
             max: self.per_account.unwrap_or(100),
+            timeout: self.tx_timeout.unwrap_or(Duration::from_secs(300)),
         }
     }
 }

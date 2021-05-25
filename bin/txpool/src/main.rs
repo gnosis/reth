@@ -71,12 +71,11 @@ pub async fn run(
     let sentry_pool = pool.clone();
 
     // rust sentry
-    tokio::spawn(async move {
+    let _ = tokio::spawn(async move {
         let _ = sentry.run(sentry_pool).await;
     });
 
-    //TODO from config
-    let addr = "[::1]:50051".parse().unwrap();
+    let addr = config.serve_ip.as_ref().unwrap().parse().unwrap();
 
     // start grpc server
     let _res = Server::builder()

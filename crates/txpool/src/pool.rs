@@ -15,6 +15,7 @@ use reth_core::{Address, BlockId, Transaction, H256, U256};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
+    time::Duration,
 };
 
 pub struct PendingBlock {
@@ -36,7 +37,7 @@ pub struct Pool {
 
 impl Pool {
     /// TODO check how we are going to get best block from world_state
-    /// and when we are going to officially start receiving tx from sentry
+    /// and when are we going to officially start receiving tx from sentry
     pub fn new(
         config: Arc<Config>,
         world_state: Arc<dyn WorldState>,
@@ -52,10 +53,21 @@ impl Pool {
             txs: Arc::new(RwLock::new(Transactions::new(config.clone(), best_block))),
             config: config.clone(),
             world_state,
-            announcer,
+            announcer: announcer.clone(),
         };
 
-        //TODO spinup checkers. One timer and one for recreating BinaryHeap
+        // periodic check for timing out tx and checking to recreate binary_heap.
+        let txs = pool.txs.clone();
+        let annon = announcer.clone();
+        let _ = tokio::spawn(async move {
+            loop {
+                let rem = txs.write().periodic_check();
+                for rem in rem {
+                    annon.removed(rem, Error::RemovedTxTimeout).await;
+                }
+                tokio::time::sleep(Duration::from_secs(30)).await;
+            }
+        });
 
         pool
     }
@@ -75,9 +87,12 @@ impl Pool {
                 .author()
                 .expect("Every inserted transaction has check if author is set")
                 .0;
-            let nonce = nonces
-                .entry(author)
-                .or_insert_with(|| infos.get(&author).expect("Acc info should be present").nonce);
+            let nonce = nonces.entry(author).or_insert_with(|| {
+                infos
+                    .get(&author)
+                    .expect("Acc info should be present")
+                    .nonce
+            });
             if *nonce == tx.nonce.as_u64() {
                 out.push(tx.tx.clone());
                 *nonce = *nonce + 1;
@@ -136,11 +151,7 @@ impl TransactionPool for Pool {
                         Some((info, block_hash))
                     };
                     // pool write lock. Insert tx into pool with provided account info.
-                    match self
-                        .txs
-                        .write()
-                        .insert(tx.clone(), false, acc_and_block_hash)
-                    {
+                    match self.txs.write().insert(tx.clone(), acc_and_block_hash) {
                         // Hurray, we included tx into pool
                         Ok(rem) => {
                             replaced = rem;
@@ -155,14 +166,16 @@ impl TransactionPool for Pool {
                             {
                                 continue;
                             }
+                            // there is error on inclusion of tx.
                             return Err(err);
                         }
                     };
                 }
                 // announce change in pool
                 for rem in replaced {
-                    self.announcer.removed(rem, Error::RemovedTxReplaced).await;
+                    self.announcer.removed(rem.0, rem.1).await;
                 }
+                self.announcer.inserted(tx).await;
                 Ok(())
             });
         }
@@ -193,8 +206,13 @@ impl TransactionPool for Pool {
     }
 
     async fn block_update(&self, update: &BlockUpdate) {
-        self.txs.write().block_update(update);
-        //TODO announce imported/removed tx
+        let (removed, reinserted) = self.txs.write().block_update(update);
+        for (rem, reason) in removed {
+            self.announcer.removed(rem, reason).await;
+        }
+        for reinsert in reinserted {
+            self.announcer.reinserted(reinsert).await;
+        }
     }
 }
 

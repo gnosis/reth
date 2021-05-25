@@ -4,21 +4,12 @@
 use reth_core::{transaction::TypePayload, Transaction, H256, U256};
 use std::{cmp, ops::Deref, sync::Arc, time::Instant};
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Priority {
-    Local,
-    Retracted,
-    Regular,
-}
-
 pub type Score = U256;
 
 #[derive(Debug)]
 pub struct ScoreTransaction {
     pub score: Score, // mostly depends on gas_price but it is influenced by priority if tx is Local/Regular/Reinserted
     pub timestamp: Instant, // it it used to remove stale transaction
-    pub priority: Priority, // Priority of transaction
-
     pub tx: Arc<Transaction>, // Transaction payload.
 }
 
@@ -27,19 +18,15 @@ impl ScoreTransaction {
         self.tx.hash()
     }
 
-    pub fn new(tx: Arc<Transaction>, priority: Priority) -> ScoreTransaction {
+    pub fn new(tx: Arc<Transaction>) -> ScoreTransaction {
         let score = match tx.type_payload {
+            // TODO effective_gas_price();
             TypePayload::AccessList(ref al) => al.legacy_payload.gas_price,
             TypePayload::Legacy(ref legacy) => legacy.gas_price,
         };
-        let score = match priority {
-            Priority::Local => score << 15,
-            Priority::Regular => score << 10,
-            Priority::Retracted => score,
-        };
+
         ScoreTransaction {
             tx: tx,
-            priority,
             score,
             timestamp: Instant::now(),
         }
@@ -57,7 +44,6 @@ impl Deref for ScoreTransaction {
 impl Clone for ScoreTransaction {
     fn clone(&self) -> Self {
         ScoreTransaction {
-            priority: self.priority,
             score: self.score.clone(),
             tx: self.tx.clone(),
             timestamp: Instant::now(),

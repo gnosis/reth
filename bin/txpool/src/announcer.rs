@@ -48,5 +48,7 @@ impl Announcer for AnnouncerImpl {
         }
     }
 
+    async fn reinserted(&self, _tx: Arc<Transaction>) {}
+
     async fn removed(&self, tx: Arc<Transaction>, error: Error) {}
 }

@@ -16,7 +16,7 @@ use std::{
 
 use anyhow::Result;
 
-use crate::{account::Account, Config, Error, Priority, ScoreTransaction};
+use crate::{account::Account, Config, Error, ScoreTransaction, MAX_PENDING_TX_REMOVALS};
 pub enum Find {
     LastAccountTx(Address),
     BestAccountTx(Address),
@@ -38,10 +38,10 @@ pub struct Transactions {
     by_score: BinaryHeap<ScoreTransaction>,
     /// pending hashes for removal. It is optimization for BinaryHeap because we dont want to recreate it every time.
     pending_removal: HashSet<H256>,
-
-    config: Arc<Config>,
-
+    /// currently known block hash and base_fee
     block: BlockInfo,
+    /// configuration
+    config: Arc<Config>,
 }
 
 impl Transactions {
@@ -96,9 +96,8 @@ impl Transactions {
     pub fn insert(
         &mut self,
         tx: Arc<Transaction>,
-        is_local: bool,
         account: Option<(AccountInfo, H256)>, // account and block hash of block
-    ) -> Result<Vec<Arc<Transaction>>> {
+    ) -> Result<Vec<(Arc<Transaction>, Error)>> {
         // check if we already have tx
         if self.by_hash.contains_key(&tx.hash()) {
             return Err(Error::AlreadyPresent.into());
@@ -106,13 +105,8 @@ impl Transactions {
 
         // check if transaction is signed and author is present
         let author = tx.author().ok_or(Error::TxAuthorUnknown)?.0;
-        let priority = if is_local {
-            Priority::Local
-        } else {
-            Priority::Regular
-        };
         // create scored transaction
-        let scoredtx = ScoreTransaction::new(tx, priority);
+        let scoredtx = ScoreTransaction::new(tx);
 
         // check if we are at pool max limit and if our tx has better score then the worst one
         if self.by_hash.len() >= self.config.max
@@ -139,7 +133,7 @@ impl Transactions {
             }
         };
 
-        let (replaced, mut removed) = acc.insert(&scoredtx, priority, self.config.per_account)?;
+        let (replaced, unfunded) = acc.insert(&scoredtx, self.config.per_account)?;
 
         // if there is replaced tx remove it here from rest of structures.
         if let Some(ref rem) = replaced {
@@ -155,13 +149,17 @@ impl Transactions {
         self.by_score.push(scoredtx.clone());
         self.by_hash.insert(scoredtx.hash(), scoredtx.tx.clone());
 
-        for tx in removed.iter() {
+        // output
+        let mut removed = Vec::new();
+
+        for tx in unfunded.iter() {
             self.remove(&tx.hash());
+            removed.push((tx.clone(), Error::RemovedTxUnfunded));
         }
 
         // add replaced tx to list of removed tx.
         if let Some(ref rep) = replaced {
-            removed.push(rep.clone());
+            removed.push((rep.clone(), Error::RemovedTxReplaced));
         }
 
         // remove transaction if we hit limit
@@ -171,7 +169,7 @@ impl Transactions {
             let worst_scoredtx = self.by_score.peek().unwrap().tx.hash();
             let rem = self.remove(&worst_scoredtx);
             if let Some(rem) = rem {
-                removed.push(rem.clone());
+                removed.push((rem.clone(), Error::RemovedTxLimitHit));
             }
         }
 
@@ -231,9 +229,19 @@ impl Transactions {
         self.by_score = BinaryHeap::from(fresh_tx);
     }
 
+    /// periodically remove stalled transactions and recreate heap if needed.
+    pub fn periodic_check(&mut self) -> Vec<Arc<Transaction>> {
+        let rem = self.remove_stalled(self.config.timeout);
+
+        if self.pending_removal.len() > MAX_PENDING_TX_REMOVALS {
+            self.recreate_heap();
+        }
+        rem
+    }
+
     /// remove all stalled transactions
     /// Iterates over all transactions and remove all that is inserted 600s ago.
-    fn remove_stalled(&mut self, threshold: Duration) -> usize {
+    fn remove_stalled(&mut self, threshold: Duration) -> Vec<Arc<Transaction>> {
         let removal_threshold = Instant::now() - threshold;
 
         let remove: Vec<H256> = self
@@ -242,12 +250,11 @@ impl Transactions {
             .filter(|&tx| tx.timestamp < removal_threshold)
             .map(|tx| tx.hash())
             .collect();
-        let cnt_removed = remove.len();
+        let mut rem_tx = Vec::new();
         for hash in remove {
-            self.remove(&hash).unwrap();
+            rem_tx.push(self.remove(&hash).unwrap());
         }
-        self.recreate_heap();
-        cnt_removed
+        rem_tx
     }
 
     /// Iterates over all transactions in pool.
@@ -273,72 +280,82 @@ impl Transactions {
         (sorted, infos, self.block.hash)
     }
 
-    pub fn block_update(&mut self, update: &BlockUpdate) {
-        // reverted nonces
-        for (address, info) in update.reverted_accounts.iter() {
-            if let Some(account) = self.by_account.get_mut(&address) {
-                // we are okay to just replace it. Tx in list allready had enought balance.
-                account.set_info(*info);
-            }
+    /// update block with new account state and reinsert transaction from reverted block
+    /// return pair of (removed tx, reinserted tx)
+    pub fn block_update(
+        &mut self,
+        update: &BlockUpdate,
+    ) -> (Vec<(Arc<Transaction>, Error)>, Vec<Arc<Transaction>>) {
+        let mut removed = Vec::new();
+        if self.block.hash != update.old_hash {
+            error!("We are incosistent with world_state. txpool should be restart");
         }
-
-        // applied nonces. We need to check nonce and gas of all transaction in list and remove ones with insufficient nonce or gas.
-        for (address, info) in update.applied_accounts.iter() {
-            let mut rem_old_nonce = Vec::new();
-            let mut rem_balance = Vec::new();
-            if let Some(account) = self.by_account.get_mut(&address) {
-                // change to new balance and nonce. We are okay to set it here, because we dont use it.
-                account.set_info(*info);
-                // remove tx with lower nonce
-                account
-                    .txs()
-                    .iter()
-                    .take_while(|tx| tx.nonce.as_u64() <= info.nonce)
-                    .for_each(|tx| rem_old_nonce.push(tx.hash()));
-                // remove tx with not enought balance
-                let mut balance = info.balance;
-                for tx in account.txs().iter().skip(rem_old_nonce.len()) {
-                    let cost = tx.cost();
-                    if cost > balance {
-                        rem_balance.push(tx.hash());
-                    }
-                    balance = balance.saturating_sub(cost);
-                }
-            }
-
-            rem_old_nonce.iter().for_each(|hash| {
-                self.remove(hash);
-            });
-            rem_balance.iter().for_each(|hash| {
-                self.remove(hash);
-            });
-        }
-
         self.block.hash = update.new_hash;
+        self.block.base_fee = update.base_fee;
+        // iterate on changes on accounts
+        for (address, info) in update.changed_accounts.iter() {
+            // placeholder for removed tx;
+            let mut rem_tx = Vec::new();
+            if let Some(account) = self.by_account.get_mut(&address) {
+                // If new nonce is greater that our current, remove all tx with obsolete nonce.
+                if info.nonce > account.info.nonce {
+                    account
+                        .txs()
+                        .iter()
+                        .take_while(|tx| tx.nonce.as_u64() <= info.nonce)
+                        .for_each(|tx| {
+                            rem_tx.push(tx.hash());
+                            removed.push((tx.clone(), Error::OnNewBlockNonce));
+                        });
+                }
+                account.info.nonce = info.nonce;
+
+                // if new balance is decreased, check if we have unfunded tx.
+                if info.balance < account.info.balance {
+                    let mut balance = info.balance;
+                    // iterate over rest of tx, skipping removed ones.
+                    for tx in account.txs().iter().skip(rem_tx.len()) {
+                        let cost = tx.cost();
+                        if cost > balance {
+                            rem_tx.push(tx.hash());
+                            removed.push((tx.clone(), Error::RemovedTxUnfunded));
+                        }
+                        balance = balance.saturating_sub(cost);
+                    }
+                }
+                account.info.balance = info.balance;
+            }
+            for remove in rem_tx {
+                self.remove(&remove);
+            }
+        }
 
         // reinsert tx that are not included in new block.
         // account info for reverted tx can be found in reverted_accounts or applied_accounts.
 
         // All aggregated:
-        let mut accounts = update
-            .applied_accounts
+        let accounts = update
+            .changed_accounts
             .iter()
             .cloned()
             .collect::<HashMap<Address, AccountInfo>>();
-        accounts.extend(update.reverted_accounts.iter().cloned());
-
+        let mut reinserted = Vec::new();
         for rawtx in update.reverted_tx.iter() {
             if let Ok(mut tx) = Transaction::decode(rawtx) {
                 if let Ok((address, _)) = tx.recover_author() {
                     if let Some(&account) = accounts.get(&address) {
-                        if let Err(err) =
-                            self.insert(Arc::new(tx), true, Some((account, update.new_hash)))
-                        {
-                            warn!(
+                        let tx = Arc::new(tx);
+                        match self.insert(tx.clone(), Some((account, update.new_hash))) {
+                            Err(err) => {
+                                warn!(
                                 "We got error while reinserting tx[{:?}] from reverted block:{:?}",
                                 rawtx,
                                 err.to_string()
                             );
+                            }
+                            Ok(_) => {
+                                reinserted.push(tx);
+                            }
                         }
                     } else {
                         warn!("Missing account for reverted tx in block:{:?}", rawtx);
@@ -352,8 +369,9 @@ impl Transactions {
             }
         }
 
-        // this is big change to pool. Let us recreashe binary heap
+        // this is big change to pool. Let us recreate binary heap
         self.recreate_heap();
+        (removed, reinserted)
     }
 }
 
@@ -394,6 +412,7 @@ mod tests {
         let config = Arc::new(Config {
             max: 100,
             per_account: 10,
+            ..Default::default()
         });
         let info = Some((
             AccountInfo {
@@ -410,9 +429,9 @@ mod tests {
         let tx3 = new_tx(h3, 3, 3, DUMMY_AUTHOR.0);
 
         //test
-        txpool.insert(tx1, false, info)?;
-        txpool.insert(tx2, false, info)?;
-        txpool.insert(tx3, false, info)?;
+        txpool.insert(tx1, info)?;
+        txpool.insert(tx2, info)?;
+        txpool.insert(tx3, info)?;
 
         //check
         assert_eq!(txpool.iter_unordered().len(), 3);
@@ -435,6 +454,7 @@ mod tests {
         let config = Arc::new(Config {
             max: 100,
             per_account: 10,
+            ..Default::default()
         });
         let info = Some((
             AccountInfo {
@@ -451,9 +471,9 @@ mod tests {
         let tx3 = new_tx(h3, 3, 3, DUMMY_AUTHOR.0);
 
         //test
-        txpool.insert(tx1, false, info)?;
-        txpool.insert(tx2, false, info)?;
-        txpool.insert(tx3, false, info)?;
+        txpool.insert(tx1, info)?;
+        txpool.insert(tx2, info)?;
+        txpool.insert(tx3, info)?;
         txpool.remove(&h2);
 
         //check
@@ -475,6 +495,7 @@ mod tests {
         let config = Arc::new(Config {
             max: 100,
             per_account: 10,
+            ..Default::default()
         });
         let info = Some((
             AccountInfo {
@@ -491,10 +512,10 @@ mod tests {
         let tx3 = new_tx(h3, 3, 1, DUMMY_AUTHOR.0);
 
         //test
-        assert_ok!(txpool.insert(tx1, false, info));
-        assert_eq!(txpool.insert(tx2, false, info)?[0].hash(), h1);
+        assert_ok!(txpool.insert(tx1, info));
+        assert_eq!(txpool.insert(tx2, info)?[0].0.hash(), h1);
         assert_eq!(
-            txpool.insert(tx3, false, info).unwrap_err().to_string(),
+            txpool.insert(tx3, info).unwrap_err().to_string(),
             Error::NotReplacedIncreaseGas.to_string()
         );
 
@@ -514,6 +535,7 @@ mod tests {
         let config = Arc::new(Config {
             max: 100,
             per_account: 2,
+            ..Default::default()
         });
         let info = Some((
             AccountInfo {
@@ -529,10 +551,10 @@ mod tests {
         let tx2 = new_tx(h2, 4, 2, DUMMY_AUTHOR.0);
         let tx3 = new_tx(h3, 3, 3, DUMMY_AUTHOR.0);
 
-        assert!(txpool.insert(tx1, false, info).is_ok());
-        assert!(txpool.insert(tx2, false, info).is_ok());
+        assert!(txpool.insert(tx1, info).is_ok());
+        assert!(txpool.insert(tx2, info).is_ok());
         assert_eq!(
-            txpool.insert(tx3, false, info).unwrap_err().to_string(),
+            txpool.insert(tx3, info).unwrap_err().to_string(),
             Error::NotInsertedTxPerAccountFull.to_string()
         );
 
@@ -544,6 +566,7 @@ mod tests {
         let config = Arc::new(Config {
             max: 2,
             per_account: 4,
+            ..Default::default()
         });
         let info = Some((
             AccountInfo {
@@ -559,10 +582,10 @@ mod tests {
         let tx2 = new_tx(h2, 4, 2, DUMMY_AUTHOR.0);
         let tx3 = new_tx(h3, 1, 3, DUMMY_AUTHOR.0);
 
-        assert!(txpool.insert(tx1, false, info).is_ok());
-        assert!(txpool.insert(tx2, false, info).is_ok());
+        assert!(txpool.insert(tx1, info).is_ok());
+        assert!(txpool.insert(tx2, info).is_ok());
         assert_eq!(
-            txpool.insert(tx3, false, info).unwrap_err().to_string(),
+            txpool.insert(tx3, info).unwrap_err().to_string(),
             Error::NotInsertedPoolFullIncreaseGas.to_string()
         );
 
@@ -574,6 +597,7 @@ mod tests {
         let config = Arc::new(Config {
             max: 10,
             per_account: 4,
+            ..Default::default()
         });
         let info = Some((
             AccountInfo {
@@ -589,10 +613,10 @@ mod tests {
         let tx2 = new_tx(h2, 4, 2, DUMMY_AUTHOR.0);
         let tx3 = new_tx(h3, 16, 3, DUMMY_AUTHOR1.0);
 
-        assert!(txpool.insert(tx1, false, info).is_ok());
-        assert!(txpool.insert(tx2, false, info).is_ok());
+        assert!(txpool.insert(tx1, info).is_ok());
+        assert!(txpool.insert(tx2, info).is_ok());
         assert_eq!(
-            txpool.insert(tx3, false, info).unwrap_err().to_string(),
+            txpool.insert(tx3, info).unwrap_err().to_string(),
             Error::NotInsertedBalanceInsufficient.to_string()
         );
 
@@ -604,6 +628,7 @@ mod tests {
         let config = Arc::new(Config {
             max: 20,
             per_account: 10,
+            ..Default::default()
         });
         let info = Some((
             AccountInfo {
@@ -617,10 +642,10 @@ mod tests {
         let tx1 = new_tx(h1, 5, 1, DUMMY_AUTHOR.0);
         let tx2 = new_tx(h2, 10, 2, DUMMY_AUTHOR.0);
 
-        assert!(txpool.insert(tx1, false, info).is_ok());
+        assert!(txpool.insert(tx1, info).is_ok());
         tokio::time::sleep(Duration::from_millis(500)).await;
-        assert!(txpool.insert(tx2, false, info).is_ok());
-        assert_eq!(txpool.remove_stalled(Duration::from_millis(250)), 1);
+        assert!(txpool.insert(tx2, info).is_ok());
+        assert_eq!(txpool.remove_stalled(Duration::from_millis(250)).len(), 1);
         assert_eq!(*txpool.iter_unordered().next().unwrap().0, h2);
     }
 
@@ -629,6 +654,7 @@ mod tests {
         let config = Arc::new(Config {
             max: 20,
             per_account: 10,
+            ..Default::default()
         });
         let info = Some((
             AccountInfo {
@@ -642,7 +668,7 @@ mod tests {
         let tx1 = new_tx(h1, 16, 1, DUMMY_AUTHOR.0);
 
         assert_eq!(
-            txpool.insert(tx1, false, info).unwrap_err().to_string(),
+            txpool.insert(tx1, info).unwrap_err().to_string(),
             Error::NotInsertedBalanceInsufficient.to_string()
         );
     }
@@ -652,6 +678,7 @@ mod tests {
         let config = Arc::new(Config {
             max: 20,
             per_account: 10,
+            ..Default::default()
         });
         let info = Some((
             AccountInfo {
@@ -665,9 +692,9 @@ mod tests {
         let tx1 = new_tx(h1, 15, 1, DUMMY_AUTHOR.0);
         let tx2 = new_tx(h2, 15, 2, DUMMY_AUTHOR.0);
 
-        assert_ok!(txpool.insert(tx1, false, info));
+        assert_ok!(txpool.insert(tx1, info));
         assert_eq!(
-            txpool.insert(tx2, false, info).unwrap_err().to_string(),
+            txpool.insert(tx2, info).unwrap_err().to_string(),
             Error::NotInsertedBalanceInsufficient.to_string()
         );
     }

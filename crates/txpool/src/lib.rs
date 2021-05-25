@@ -15,5 +15,5 @@ pub use error::*;
 pub use pool::*;
 pub use transactions::Find;
 
-use score::{Priority, ScoreTransaction};
+use score::ScoreTransaction;
 use transactions::Transactions;

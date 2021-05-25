@@ -11,7 +11,6 @@ pub struct GrpcWorldState {
 
 impl GrpcWorldState {
     pub async fn new(address: String) -> GrpcWorldState {
-        //let addr = "[::1]:50051".parse().unwrap();
         let client = Mutex::new(TxpoolControlClient::connect(address).await.unwrap());
         GrpcWorldState { client }
     }

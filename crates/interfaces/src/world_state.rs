@@ -27,9 +27,9 @@ impl AccountInfo {
 pub struct BlockUpdate {
     pub old_hash: H256,
     pub new_hash: H256,
+    pub base_fee: U256,
     pub reverted_tx: Vec<Vec<u8>>,
-    pub reverted_accounts: Vec<(Address, AccountInfo)>,
-    pub applied_accounts: Vec<(Address, AccountInfo)>,
+    pub changed_accounts: Vec<(Address, AccountInfo)>,
 }
 
 #[cfg(any(test, feature = "test_only"))]

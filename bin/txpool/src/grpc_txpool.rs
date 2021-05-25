@@ -9,8 +9,8 @@ use grpc_interfaces::{
 use interfaces::txpool::TransactionPool;
 use prost::bytes::Bytes;
 use reth_core::*;
-use std::{sync::Arc, time::Duration};
-use tokio::{sync::mpsc, time};
+use std::sync::Arc;
+use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 use txpool::Pool;
@@ -95,8 +95,8 @@ impl Txpool for GrpcPool {
         &self,
         _: Request<OnAddRequest>,
     ) -> Result<Response<Self::OnAddStream>, Status> {
-        //TODO see what to do when buffer gets full.
-        let (tx, rx) = mpsc::channel(300);
+        // TODO see what to do when/if buffer gets full.
+        let (tx, rx) = mpsc::channel(1000);
         self.announcer.subscribe(tx).await;
 
         Ok(Response::new(ReceiverStream::new(rx)))
