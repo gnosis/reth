@@ -9,6 +9,7 @@ use grpc_interfaces::{
 use interfaces::txpool::TransactionPool;
 use prost::bytes::Bytes;
 use reth_core::*;
+use rlp::DecoderError;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -56,13 +57,26 @@ impl Txpool for GrpcPool {
     }
 
     async fn add(&self, request: Request<AddRequest>) -> Result<Response<AddReply>, Status> {
-        let vec = request
+        let vec: Vec<_> = request
             .get_ref()
             .rlp_txs
             .iter()
-            .map(|t| t.to_vec())
-            .collect::<Vec<_>>();
-        let _ = self.pool.import(&vec).await;
+            .map(|t| Transaction::decode(t))
+            .filter(|t| t.is_ok())
+            .map(|t| t.unwrap())
+            .collect();
+
+        let mut txs = Vec::with_capacity(vec.len());
+        for mut tx in vec.into_iter() {
+            if let Err(_) = tx.recover_author() {
+                return Err(Status::new(
+                    tonic::Code::Internal,
+                    "Recovering author failed",
+                ));
+            }
+            txs.push(Arc::new(tx));
+        }
+        let _ = self.pool.import(txs).await;
         Ok(Response::new(AddReply {
             imported: vec![0],
             errors: vec!["String".into()],
@@ -84,7 +98,7 @@ impl Txpool for GrpcPool {
             rlp_txs: tx
                 .into_iter()
                 .filter(|t| t.is_some())
-                .map(|t| Bytes::from(t.unwrap()))
+                .map(|t| Bytes::from(t.unwrap().encode()))
                 .collect::<Vec<_>>(),
         }))
     }

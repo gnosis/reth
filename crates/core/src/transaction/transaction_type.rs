@@ -3,7 +3,7 @@
 
 use ethereum_types::U64;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(u8)]
 pub enum TxType {
     AccessList = 0x01,

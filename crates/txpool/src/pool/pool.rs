@@ -1,9 +1,8 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{
-    config::Config, transactions::BlockInfo, Announcer, Error, Find, ScoreTransaction, Transactions,
-};
+use super::{transactions::BlockInfo, ScoreTransaction, Transactions};
+use crate::{config::Config, Announcer, Error};
 use async_trait::async_trait;
 use futures::future::join_all;
 use interfaces::{
@@ -119,14 +118,16 @@ impl TransactionPool for Pool {
             .collect()
     }
 
-    async fn import(&self, txs: &[Vec<u8>]) -> Vec<anyhow::Result<()>> {
+    async fn import(&self, txs: Vec<Arc<Transaction>>) -> Vec<anyhow::Result<()>> {
         let mut handlers = Vec::with_capacity(txs.len());
-        for raw_tx in txs.into_iter() {
+        for tx in txs.into_iter() {
+            let tx = tx.clone();
             handlers.push(async move {
-                let mut tx = Transaction::decode(&raw_tx)?;
-                let (address, _) = tx.recover_author()?;
-                let tx = Arc::new(tx);
-                let mut replaced = Vec::new();
+                if !tx.has_author() {
+                    return Err(Error::TxAuthorUnknown.into());
+                }
+                let (address, _) = tx.author().unwrap();
+                let replaced;
 
                 // Loop below is a way to avoid calling world_state.account_info from rwlocked pool and with that
                 // blocking all operation for extended period while we are waiting for response.
@@ -172,8 +173,8 @@ impl TransactionPool for Pool {
                     };
                 }
                 // announce change in pool
-                for rem in replaced {
-                    self.announcer.removed(rem.0, rem.1).await;
+                for (tx,reason) in replaced {
+                    self.announcer.removed(tx, reason).await;
                 }
                 self.announcer.inserted(tx).await;
                 Ok(())
@@ -183,15 +184,11 @@ impl TransactionPool for Pool {
         join_all(handlers).await
     }
 
-    async fn find(&self, hashes: &[H256]) -> Vec<Option<Vec<u8>>> {
+    async fn find(&self, hashes: &[H256]) -> Vec<Option<Arc<Transaction>>> {
         let mut out = Vec::with_capacity(hashes.len());
+        let txs = self.txs.read();
         for hash in hashes.into_iter() {
-            out.push(
-                self.txs
-                    .read()
-                    .find(Find::TxByHash(*hash))
-                    .map(|tx| tx.encode()),
-            )
+            out.push(txs.find_by_hash(hash))
         }
         out
     }
@@ -219,8 +216,8 @@ impl TransactionPool for Pool {
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod tests {
+    use super::super::announcer::test::AnnouncerTest;
     use super::*;
-    use crate::announcer::test::AnnouncerTest;
     use interfaces::world_state::helper::WorldStateTest;
 
     #[tokio::test]
@@ -232,7 +229,7 @@ mod tests {
             Arc::new(AnnouncerTest::new()),
         ));
         {
-            pool.import(&vec![]).await;
+            pool.import(vec![]).await;
         }
     }
 }

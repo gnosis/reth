@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use crate::{score::ScoreTransaction, Error, BUMP_SCORE_BY_12_5_PERC};
+use crate::{Error, BUMP_SCORE_BY_12_5_PERC};
+use super::score::ScoreTransaction;
 use anyhow::Result;
 use interfaces::world_state::AccountInfo;
 use reth_core::{Transaction, H256};
@@ -37,7 +38,7 @@ impl Account {
         self.transactions.is_empty()
     }
 
-    /// if okay return replaced and removed transaction with unsuficient fund.
+    /// if okay, return pair of replaced and removed transaction with unsuficient fund.
     pub fn insert(
         &mut self,
         tx: &ScoreTransaction,
@@ -103,7 +104,7 @@ impl Account {
         let mut unsuficient_fund = Vec::new();
         // now, with sorted tx inside our by_account struct
         // We can calculate cost and check if we disrupted cost for tx with greater nonce.
-        // if there is not enought gas, remove transactions.
+        // if there is not enought gas for those transactions remove them.
         let mut left_balance = balance;
         for tx in self.transactions[insert_index..].iter() {
             let cost = tx.cost();

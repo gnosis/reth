@@ -32,6 +32,6 @@ pub mod test {
 
         async fn removed(&self, _tx: Arc<Transaction>, _error: Error) {}
 
-        async fn reinserted(&self, tx: Arc<Transaction>) {}
+        async fn reinserted(&self, _tx: Arc<Transaction>) {}
     }
 }

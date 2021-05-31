@@ -1,19 +1,21 @@
 // Copyright 2020-2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
+use std::sync::Arc;
+
 use super::world_state::BlockUpdate;
 use async_trait::async_trait;
-use reth_core::H256;
+use reth_core::{H256, Transaction};
 
 /// Trait that allows getting blocks data
 #[async_trait]
-pub trait TransactionPool: 'static {
+pub trait TransactionPool: Send+Sync {
     /// preserves incoming order, changes amount, unknown hashes will be omitted
     async fn filter_by_negative(&self, hashes: &[H256]) -> Vec<H256>;
     /// preserves incoming order and amount
-    async fn import(&self, tx: &[Vec<u8>]) -> Vec<anyhow::Result<()>>;
+    async fn import(&self, tx: Vec<Arc<Transaction>>) -> Vec<anyhow::Result<()>>;
     /// preserves incoming order and amount, if some transaction doesn't exists in pool - returns nil in this slot
-    async fn find(&self, hashes: &[H256]) -> Vec<Option<Vec<u8>>>;
+    async fn find(&self, hashes: &[H256]) -> Vec<Option<Arc<Transaction>>>;
     /// Remove transaction from tx
     async fn remove(&self, hashes: &[H256]);
 

@@ -24,8 +24,8 @@ All functionality function as constraints on structures that we are using, as so
 * `by_hash` (`HashMap<Keccak,Tx>`) used for fast lookup of transaction.
 * `by_account` (`HashMap<Address, Account>`) used to find account that has transaction in pool. `Account` has:
     * Nonce and Balance: taken from world state. This is updated on every new block insertion, reorg or it is obtained when we try to insert new transaction into pool.
-    * List of transactions, sorted by nonce (Vec<Tx>), as said there could be nonce gaps but number of transaction per account is limited, this is done as security requirment to stop spamming. 
-* `by_score` (`BinaryHeap`) structure used for sorting of transactions for pending block and ejecting lowest scored transaction. Removed transaction hashes are temporarily saved in `for_removal` list and when `BinaryHeap` is recreated they are removed. In this case, it is BinaryHeap but in general, we could use BTreeMap or any other structure that allow fast insertion of items in sorted order
+    * List of transactions, sorted by nonce (Vec<Tx>), as said, there could be nonce gaps but number of transaction per account is limited, this is done as security requirment to stop spamming. 
+* `by_score` (`BinaryHeap`) structure used for sorting of transactions for pending block and it give us ability to eject lowest scored transaction. Removed transaction hashes are temporarily saved in `for_removal` list and when `BinaryHeap` is recreated they are removed. In this case, it is BinaryHeap but in general, we could use BTreeMap or any other structure that allow fast insertion of items in sorted order.
 
 
 For block update for both reverted (reorg) or new included blocks we require all account changes (nonce and balance) and list of reverted transaction that needs to be reincluded into pool.

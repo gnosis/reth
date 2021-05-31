@@ -16,7 +16,8 @@ use std::{
 
 use anyhow::Result;
 
-use crate::{account::Account, Config, Error, ScoreTransaction, MAX_PENDING_TX_REMOVALS};
+use super::{account::Account, ScoreTransaction};
+use crate::{Config, Error, MAX_PENDING_TX_REMOVALS};
 pub enum Find {
     LastAccountTx(Address),
     BestAccountTx(Address),
@@ -54,6 +55,11 @@ impl Transactions {
             config,
             block,
         }
+    }
+
+    #[inline]
+    pub fn find_by_hash(&self, hash: &H256) -> Option<Arc<Transaction>> {
+        self.by_hash.get(hash).cloned()
     }
 
     /// find one particular transaction
@@ -164,7 +170,6 @@ impl Transactions {
 
         // remove transaction if we hit limit
         if self.by_hash.len() > self.config.max {
-            // we dont check if it is local or not, because score for Local should be a lot higher.
             // and max_tx_count should be hard limit.
             let worst_scoredtx = self.by_score.peek().unwrap().tx.hash();
             let rem = self.remove(&worst_scoredtx);

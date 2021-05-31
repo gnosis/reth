@@ -1,6 +1,7 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 use thiserror::Error;
+use rlp::DecoderError;
 
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum Error {
@@ -20,8 +21,7 @@ pub enum Error {
     AlreadyPresent,
     #[error("Author unknown.")]
     TxAuthorUnknown,
-    #[error("Runtime error.")]
-    RuntimeError,
+
     #[error("Transaction replaced on inclusion")]
     RemovedTxReplaced,
     #[error("Transaction removed on demand")]
@@ -32,10 +32,15 @@ pub enum Error {
     RemovedTxUnfunded,
     #[error("Transaction removed, max pool limit hit, and this is one of worst tx in pool")]
     RemovedTxLimitHit,
-    #[error("On new block. Nonce is unsufficient transaction probably included in block")]
+
+    #[error("On new block. Transaction nonce was obsolete, it is probably included in block.")]
     OnNewBlockNonce,
+
     #[error("Internal error. Account not found")]
     InternalAccountNotFound,
     #[error("Internal error. Account info is obsolete")]
     InternalAccountObsolete,
+
+    #[error("Rlp decode error")]
+    DecoderError(DecoderError),
 }

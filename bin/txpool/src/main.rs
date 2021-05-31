@@ -3,11 +3,12 @@
 
 use clap::Clap;
 use grpc_interfaces::txpool::txpool_server::{Txpool, TxpoolServer};
+use interfaces::world_state::WorldState;
 use log::*;
 use std::sync::Arc;
 use toml;
 use tonic::transport::Server;
-use txpool::Pool;
+use txpool::{Peers, Pool};
 
 use crate::{
     announcer::AnnouncerImpl,
@@ -44,7 +45,9 @@ pub async fn configure() -> Config {
     config
 }
 
-pub async fn init(config: Arc<Config>) -> (Arc<GrpcSentry>, Arc<Pool>, GrpcPool) {
+pub async fn init(
+    config: Arc<Config>,
+) -> (Arc<GrpcSentry>, Arc<Peers>, Arc<Pool>, GrpcPool, Arc<GrpcWorldState>) {
     let world_state =
         Arc::new(GrpcWorldState::new(config.world_state.as_ref().unwrap().clone()).await);
     let sentry = Arc::new(GrpcSentry::new(config.sentry.as_ref().unwrap().clone()).await);
@@ -58,21 +61,28 @@ pub async fn init(config: Arc<Config>) -> (Arc<GrpcSentry>, Arc<Pool>, GrpcPool)
     //Create objects
     let pool = Arc::new(Pool::new(config, world_state.clone(), annon.clone()));
 
+    let peers = Peers::new(sentry.clone(), pool.clone());
+
     let pool_server = GrpcPool::new(pool.clone(), annon.clone());
-    (sentry, pool, pool_server)
+    (sentry, peers, pool, pool_server, world_state)
 }
 
 pub async fn run(
     config: Arc<Config>,
     sentry: Arc<GrpcSentry>,
+    world_state: Arc<GrpcWorldState>,
+    peers: Arc<Peers>,
     pool: Arc<Pool>,
     pool_server: GrpcPool,
 ) {
-    let sentry_pool = pool.clone();
-
     // rust sentry
     let _ = tokio::spawn(async move {
-        let _ = sentry.run(sentry_pool).await;
+        let _ = sentry.run(peers).await;
+    });
+
+    // run world state for block update
+    let _ = tokio::spawn(async move {
+        let _ = world_state.run(pool).await;
     });
 
     let addr = config.serve_ip.as_ref().unwrap().parse().unwrap();
@@ -92,9 +102,9 @@ async fn main() {
 
     let config = Arc::new(configure().await);
 
-    let (sentry, pool, pool_service) = init(config.clone()).await;
+    let (sentry, peers, pool, pool_service, world_state) = init(config.clone()).await;
 
-    run(config, sentry, pool, pool_service).await;
+    run(config, sentry, world_state, peers, pool, pool_service).await;
 
     //cleanup
 }
