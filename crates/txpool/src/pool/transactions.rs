@@ -16,7 +16,7 @@ use std::{
 
 use anyhow::Result;
 
-use super::{account::Account, ScoreTransaction};
+use super::{account::Account, score::ByScore, ScoreTransaction};
 use crate::{Config, Error, MAX_PENDING_TX_REMOVALS};
 pub enum Find {
     LastAccountTx(Address),
@@ -33,12 +33,10 @@ pub struct BlockInfo {
 pub struct Transactions {
     /// transaction by account sorted in increasing order
     by_account: HashMap<Address, Account>,
-    /// all transaction by its hash
-    by_hash: HashMap<H256, Arc<Transaction>>,
-    /// all transactions sorted by min/max value
-    by_score: BinaryHeap<ScoreTransaction>,
-    /// pending hashes for removal. It is optimization for BinaryHeap because we dont want to recreate it every time.
-    pending_removal: HashSet<H256>,
+    /// all transaction by its hash and timeout.
+    by_hash: HashMap<H256, (Arc<Transaction>, Instant)>,
+    /// Sorted by score.
+    by_score: ByScore,
     /// currently known block hash and base_fee
     block: BlockInfo,
     /// configuration
@@ -50,8 +48,7 @@ impl Transactions {
         Self {
             by_account: HashMap::new(),
             by_hash: HashMap::new(),
-            by_score: BinaryHeap::new(),
-            pending_removal: HashSet::new(),
+            by_score: ByScore::new(),
             config,
             block,
         }
@@ -59,7 +56,8 @@ impl Transactions {
 
     #[inline]
     pub fn find_by_hash(&self, hash: &H256) -> Option<Arc<Transaction>> {
-        self.by_hash.get(hash).cloned()
+        let (tx, _) = self.by_hash.get(hash)?;
+        Some(tx.clone())
     }
 
     /// find one particular transaction
@@ -75,7 +73,7 @@ impl Transactions {
                 .get(&address)
                 .map(|account| account.txs().first().cloned())
                 .flatten(),
-            Find::TxByHash(hash) => self.by_hash.get(&hash).cloned(),
+            Find::TxByHash(hash) => self.find_by_hash(&hash),
         }
     }
 
@@ -145,15 +143,16 @@ impl Transactions {
         if let Some(ref rem) = replaced {
             let hash = rem.hash();
             self.by_hash.remove(&hash);
-            self.by_score_remove(hash)
+            self.by_score.remove(hash)
         }
 
         // remove it from removed list if present. (This is edge case, should happen only very rarely).
-        self.pending_removal.remove(&scoredtx.hash());
+        self.by_score.pending_removal_remove(&scoredtx.hash());
 
         // insert to other structures
         self.by_score.push(scoredtx.clone());
-        self.by_hash.insert(scoredtx.hash(), scoredtx.tx.clone());
+        self.by_hash
+            .insert(scoredtx.hash(), (scoredtx.tx.clone(), Instant::now()));
 
         // output
         let mut removed = Vec::new();
@@ -181,28 +180,12 @@ impl Transactions {
         Ok(removed)
     }
 
-    fn by_score_remove(&mut self, hash: H256) {
-        if self.by_score.peek().unwrap().hash() == hash {
-            self.by_score.pop();
-            loop {
-                // pop last tx if there are pending for removal
-                if let Some(tx) = self.by_score.peek().cloned() {
-                    if self.pending_removal.contains(&tx.hash()) {
-                        self.by_score.pop();
-                        continue;
-                    }
-                }
-                break;
-            }
-        } else {
-            // mark tx for removal from by_score
-            self.pending_removal.insert(hash);
-        }
-    }
-
     pub fn remove(&mut self, txhash: &H256) -> Option<Arc<Transaction>> {
         // remove tx from by_hash
-        if let Some(tx) = self.by_hash.remove(txhash) {
+        if let Some((tx,_)) = self.by_hash.remove(txhash) {
+            // TODO discussion. Check if we want to remove this tx if there are tx from same account but greater nonce?
+            // we will be making gaps 
+
             // remove tx from by_accounts
             let author = tx.author().unwrap().0;
             if self
@@ -214,32 +197,19 @@ impl Transactions {
                 self.by_account.remove(&author);
             }
             // if transaction is at end of binaryheap just remove it.
-            self.by_score_remove(*txhash);
+            self.by_score.remove(*txhash);
             Some(tx.clone())
         } else {
             None
         }
     }
 
-    pub fn recreate_heap(&mut self) {
-        // we can use retain from BinaryHeap but it is currently experimental feature:
-        // https://doc.rust-lang.org/std/collections/struct.BinaryHeap.html#method.retain
-        let fresh_tx: Vec<_> = mem::replace(&mut self.by_score, BinaryHeap::new())
-            .into_vec()
-            .into_iter()
-            .filter(|tx| !self.pending_removal.contains(&tx.hash()))
-            .collect();
-
-        self.pending_removal.clear();
-        self.by_score = BinaryHeap::from(fresh_tx);
-    }
-
     /// periodically remove stalled transactions and recreate heap if needed.
     pub fn periodic_check(&mut self) -> Vec<Arc<Transaction>> {
         let rem = self.remove_stalled(self.config.timeout);
 
-        if self.pending_removal.len() > MAX_PENDING_TX_REMOVALS {
-            self.recreate_heap();
+        if self.by_score.pending_removal() > MAX_PENDING_TX_REMOVALS {
+            self.by_score.recreate_heap();
         }
         rem
     }
@@ -250,10 +220,10 @@ impl Transactions {
         let removal_threshold = Instant::now() - threshold;
 
         let remove: Vec<H256> = self
-            .by_score
+            .by_hash
             .iter()
-            .filter(|&tx| tx.timestamp < removal_threshold)
-            .map(|tx| tx.hash())
+            .filter(|(_,(_,timestamp))| *timestamp < removal_threshold)
+            .map(|(hash,_)| hash.clone())
             .collect();
         let mut rem_tx = Vec::new();
         for hash in remove {
@@ -263,18 +233,22 @@ impl Transactions {
     }
 
     /// Iterates over all transactions in pool.
-    pub fn iter_unordered(&self) -> Iter<'_, H256, Arc<Transaction>> {
+    pub fn iter_unordered(&self) -> Iter<'_, H256, (Arc<Transaction>,Instant)> {
         self.by_hash.iter()
     }
 
     /// Return all transactions in pool sorted from best to worst score.
     /// additionally return account info.
     /// This is expensive opperation, use it only when needed.
-    pub fn sorted_vec_and_accounts(
+    pub fn binary_heap_and_accounts(
         &mut self,
-    ) -> (Vec<ScoreTransaction>, HashMap<Address, AccountInfo>, H256) {
-        self.recreate_heap();
-        let sorted = self.by_score.clone().into_sorted_vec();
+    ) -> (
+        BinaryHeap<ScoreTransaction>,
+        HashMap<Address, AccountInfo>,
+        H256,
+    ) {
+        self.by_score.recreate_heap();
+        let binary_heap = self.by_score.clone_heap();
 
         let mut infos = HashMap::with_capacity(self.by_account.len());
 
@@ -282,7 +256,7 @@ impl Transactions {
             infos.insert(*address, acc.info().clone());
         }
 
-        (sorted, infos, self.block.hash)
+        (binary_heap, infos, self.block.hash)
     }
 
     /// update block with new account state and reinsert transaction from reverted block
@@ -375,7 +349,7 @@ impl Transactions {
         }
 
         // this is big change to pool. Let us recreate binary heap
-        self.recreate_heap();
+        self.by_score.recreate_heap();
         (removed, reinserted)
     }
 }
@@ -443,8 +417,9 @@ mod tests {
 
         //check ordered
         let sorted = txpool
-            .sorted_vec_and_accounts()
+            .binary_heap_and_accounts()
             .0
+            .into_sorted_vec()
             .into_iter()
             .map(|t| t.hash())
             .collect::<Vec<_>>();
@@ -485,8 +460,9 @@ mod tests {
         assert_eq!(txpool.iter_unordered().len(), 2);
 
         let sorted = txpool
-            .sorted_vec_and_accounts()
+            .binary_heap_and_accounts()
             .0
+            .into_sorted_vec()
             .into_iter()
             .map(|t| t.hash())
             .collect::<Vec<_>>();
@@ -525,8 +501,9 @@ mod tests {
         );
 
         let sorted = txpool
-            .sorted_vec_and_accounts()
+            .binary_heap_and_accounts()
             .0
+            .into_sorted_vec()
             .into_iter()
             .map(|t| t.hash())
             .collect::<Vec<_>>();

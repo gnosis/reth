@@ -78,7 +78,8 @@ impl Pool {
     /// Get transaction for pending blocks
     pub async fn new_pending_block(&self) -> (Vec<Arc<Transaction>>, H256) {
         //iterate over sorted tx to create new pending block tx
-        let (sorted, infos, parent_hash) = self.txs.write().sorted_vec_and_accounts();
+        let (binary_heap, infos, parent_hash) = self.txs.write().binary_heap_and_accounts();
+        let sorted = binary_heap.into_sorted_vec();
         let mut out = Vec::new();
         let mut nonces: HashMap<Address, u64> = HashMap::new();
         for tx in sorted.into_iter().rev() {
@@ -97,7 +98,7 @@ impl Pool {
                 *nonce = *nonce + 1;
             }
         }
-        // TODO discuss if this use case needs to be covered:
+        // TODO discuss. if this use case needs to be covered:
         // If we have tx0 and tx1 from same author with nonces 0 and 1,
         // and tx1 has better score then tx0, that would mean that when iterating we are going to skip tx1
         // and include only tx0. Should we tranverse back and try to include tx1 again?
@@ -173,7 +174,7 @@ impl TransactionPool for Pool {
                     };
                 }
                 // announce change in pool
-                for (tx,reason) in replaced {
+                for (tx, reason) in replaced {
                     self.announcer.removed(tx, reason).await;
                 }
                 self.announcer.inserted(tx).await;
