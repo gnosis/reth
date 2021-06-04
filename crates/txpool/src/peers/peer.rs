@@ -21,6 +21,7 @@ pub const MAX_KNOWN_TX: usize = 1024;
 pub struct Peer {
     peer_id: PeerId,
     requested: HashMap<u64, Vec<H256>>, // Maybe add as Map <RequestId, Vec<H256>>
+    request_id: u64,
     known: HashSet<H256>,
     known_sorted: VecDeque<H256>,
     pool: Arc<dyn TransactionPool>,
@@ -33,6 +34,7 @@ impl Peer {
             peer_id,
             pool,
             sentry,
+            request_id: 0,
             requested: HashMap::new(),
             known: HashSet::new(),
             known_sorted: VecDeque::new(),
@@ -124,13 +126,32 @@ impl Peer {
             .map(|(index, _)| index)
             .collect();
 
-        let mut rlp = RlpStream::new_list(unknown_index.len());
+        // request id
+        self.request_id = if let Some(add) = self.request_id.checked_add(1) {
+            add
+        } else {
+            0
+        };
+
+        let mut rlp = RlpStream::new_list(2);
+        rlp.append(&self.request_id);
+        rlp.begin_list(unknown_index.len());
+
+        let mut requested_hashes = Vec::with_capacity(unknown_index.len());
         for index in unknown_index {
-            rlp.append(&hashes[index]);
+            let hash = hashes[index];
+            rlp.append(&hash);
+            requested_hashes.push(hash);
         }
-        let freeze = rlp.out().freeze();
+
+        self.requested.insert(self.request_id, requested_hashes);
+
         self.sentry
-            .send_message_by_id(self.peer_id, TxMessage::GetPooledTransactions, freeze)
+            .send_message_by_id(
+                self.peer_id,
+                TxMessage::GetPooledTransactions,
+                rlp.out().freeze(),
+            )
             .await;
 
         Ok(())
@@ -139,7 +160,12 @@ impl Peer {
     /// mark asked transaction as known. Ask pool to find txs and send it to peer.
     /// TODO checks on number of asked txs. Check if there is more checks that we need to do.
     async fn inbound_get_pooled_tx(&mut self, data: &Bytes) -> Result<()> {
-        let hashes: Vec<H256> = Rlp::new(data).as_list()?;
+        let rlp = Rlp::new(data);
+        if rlp.item_count()? != 2 {
+            return Err(DecoderError::RlpIncorrectListLen.into());
+        }
+        let request_id: u64 = rlp.val_at(0)?;
+        let hashes: Vec<H256> = rlp.list_at(1)?;
 
         let txs: Vec<_> = self
             .pool
@@ -151,12 +177,15 @@ impl Peer {
             .collect();
 
         let mut rlp = RlpStream::new();
+        rlp.append(&request_id);
+        rlp.begin_list(txs.len());
         for tx in txs.into_iter() {
             self.insert_known(tx.hash());
+            let data = tx.encode();
             if tx.txtype() == TxType::Legacy {
-                rlp.append_raw(&tx.encode(), 1);
+                rlp.append_raw(&data, 1);
             } else {
-                rlp.append(&tx.encode());
+                rlp.append(&data);
             }
         }
         self.sentry
@@ -175,6 +204,7 @@ impl Peer {
         rlp.begin_unbounded_list();
         for tx in new.iter() {
             let hash = &tx.hash();
+            //TODO set limit of number of txs. See what to do if we have more tx that we didnt send.
             if self.is_known(hash) {
                 rlp.append(hash);
                 self.insert_known(*hash);

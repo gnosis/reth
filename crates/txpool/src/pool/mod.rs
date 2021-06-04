@@ -5,5 +5,5 @@ mod score;
 mod transactions;
 
 use score::ScoreTransaction;
-use transactions::{Transactions,Find};
+use transactions::Transactions;
 pub use pool::{PendingBlock,Pool};

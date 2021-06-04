@@ -150,7 +150,7 @@ impl Transaction {
             let data = tx.encode();
             match tx.txtype() {
                 TxType::Legacy => rlp.append_raw(&data, 1),
-                TxType::AccessList => rlp.append(&data),
+                _ => rlp.append(&data),
             };
         }
     }

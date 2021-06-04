@@ -4,6 +4,7 @@
 [package]
 name = "reth-interfaces"
 version = "0.0.1"
+authors = ["Dragan Rakita <dragan0rakita@gmail.com"]
 edition = "2018"
 
 [features]

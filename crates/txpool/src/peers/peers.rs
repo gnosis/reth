@@ -14,7 +14,7 @@ use interfaces::{
     sentry::{Sentry, TxMessage},
     txpool::TransactionPool,
 };
-use reth_core::{Transaction, H256, H512};
+use reth_core::{Transaction, H512};
 use tokio::{
     sync::{mpsc::UnboundedSender, Mutex, Notify, RwLock},
     task::JoinHandle,
@@ -58,7 +58,7 @@ impl Peers {
             // empty buffer
             let txs: Vec<_> = {
                 peers2.notify_tx_buffer.notified().await;
-                // sleep 50ms after waking up so that we can wait for new incoming tx.
+                // sleep 50ms after waking up so that we can buffer more new incoming txs.
                 tokio::time::sleep(Duration::from_millis(50)).await;
                 std::mem::take(peers2.tx_buffer.lock().await.as_mut())
             };
@@ -74,13 +74,11 @@ impl Peers {
                     disconnected_peers.push(*peer_id);
                 }
             }
-            {
-                // remove disconnected peers from HashMap
-                if !disconnected_peers.is_empty() {
-                    let mut peers = peers2.peers.write().await;
-                    for dis in disconnected_peers.iter() {
-                        peers.remove(dis);
-                    }
+            // remove disconnected peers from HashMap
+            if !disconnected_peers.is_empty() {
+                let mut peers = peers2.peers.write().await;
+                for dis in disconnected_peers.iter() {
+                    peers.remove(dis);
                 }
             }
 
@@ -141,7 +139,7 @@ impl Announcer for Peers {
         self.notify_tx_buffer.notify_one();
     }
 
-    async fn reinserted(&self, tx: Arc<Transaction>) {}
+    async fn reinserted(&self, _tx: Arc<Transaction>) {}
 
-    async fn removed(&self, tx: Arc<Transaction>, error: crate::Error) {}
+    async fn removed(&self, _tx: Arc<Transaction>, _error: crate::Error) {}
 }

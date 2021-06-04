@@ -4,7 +4,7 @@
 [package]
 name = "reth-txpool"
 version = "1.0.0-alpha"
-authors = ["Gnosis developers <developers@gnosis.io>"]
+authors = ["Dragan Rakita <dragan0rakita@gmail.com","Gnosis developers <developers@gnosis.io>"]
 edition = "2018"
 
 [dependencies]

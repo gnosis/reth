@@ -8,7 +8,6 @@ use std::{
     mem,
     ops::Deref,
     sync::Arc,
-    time::Instant,
 };
 
 pub type Score = U256;

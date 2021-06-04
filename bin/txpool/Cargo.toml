@@ -5,6 +5,7 @@
 name = "txpool"
 version = "1.0.0-alpha"
 edition = "2018"
+authors = ["Dragan Rakita <dragan0rakita@gmail.com"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
