@@ -110,7 +110,7 @@ impl Transactions {
         // check if transaction is signed and author is present
         let author = tx.author().ok_or(Error::TxAuthorUnknown)?.0;
         // create scored transaction
-        let scoredtx = ScoreTransaction::new(tx);
+        let scoredtx = ScoreTransaction::new(tx, &self.block.base_fee);
 
         // check if we are at pool max limit and if our tx has better score then the worst one
         if self.by_hash.len() >= self.config.max
@@ -182,9 +182,9 @@ impl Transactions {
 
     pub fn remove(&mut self, txhash: &H256) -> Option<Arc<Transaction>> {
         // remove tx from by_hash
-        if let Some((tx,_)) = self.by_hash.remove(txhash) {
+        if let Some((tx, _)) = self.by_hash.remove(txhash) {
             // TODO discussion. Check if we want to remove this tx if there are tx from same account but greater nonce?
-            // we will be making gaps 
+            // we will be making gaps
 
             // remove tx from by_accounts
             let author = tx.author().unwrap().0;
@@ -209,7 +209,7 @@ impl Transactions {
         let rem = self.remove_stalled(self.config.timeout);
 
         if self.by_score.pending_removal() > MAX_PENDING_TX_REMOVALS {
-            self.by_score.recreate_heap();
+            self.by_score.recreate_heap(None);
         }
         rem
     }
@@ -222,8 +222,8 @@ impl Transactions {
         let remove: Vec<H256> = self
             .by_hash
             .iter()
-            .filter(|(_,(_,timestamp))| *timestamp < removal_threshold)
-            .map(|(hash,_)| hash.clone())
+            .filter(|(_, (_, timestamp))| *timestamp < removal_threshold)
+            .map(|(hash, _)| hash.clone())
             .collect();
         let mut rem_tx = Vec::new();
         for hash in remove {
@@ -233,7 +233,7 @@ impl Transactions {
     }
 
     /// Iterates over all transactions in pool.
-    pub fn iter_unordered(&self) -> Iter<'_, H256, (Arc<Transaction>,Instant)> {
+    pub fn iter_unordered(&self) -> Iter<'_, H256, (Arc<Transaction>, Instant)> {
         self.by_hash.iter()
     }
 
@@ -247,7 +247,7 @@ impl Transactions {
         HashMap<Address, AccountInfo>,
         H256,
     ) {
-        self.by_score.recreate_heap();
+        self.by_score.recreate_heap(None);
         let binary_heap = self.by_score.clone_heap();
 
         let mut infos = HashMap::with_capacity(self.by_account.len());
@@ -294,7 +294,7 @@ impl Transactions {
                     let mut balance = info.balance;
                     // iterate over rest of tx, skipping removed ones.
                     for tx in account.txs().iter().skip(rem_tx.len()) {
-                        let cost = tx.cost();
+                        let cost = tx.max_cost();
                         if cost > balance {
                             rem_tx.push(tx.hash());
                             removed.push((tx.clone(), Error::RemovedTxUnfunded));
@@ -348,8 +348,8 @@ impl Transactions {
             }
         }
 
-        // this is big change to pool. Let us recreate binary heap
-        self.by_score.recreate_heap();
+        // update effective_gas_price for all transacitions and let us recreate binary heap
+        self.by_score.recreate_heap(Some(self.block.base_fee));
         (removed, reinserted)
     }
 }
@@ -368,9 +368,8 @@ mod tests {
     fn new_tx(hash: H256, score: usize, nonce: usize, author: Address) -> Arc<Transaction> {
         let mut tx = Transaction::default();
         tx.gas_limit = (score * 4).into();
-        tx.type_payload = TypePayload::Legacy(LegacyPayload {
-            gas_price: score.into(),
-        });
+        tx.gas_price = score.into();
+        tx.type_payload = TypePayload::Legacy(LegacyPayload {});
         tx = fake_sign(tx, author);
         tx.set_hash(hash);
         tx.nonce = nonce.into();

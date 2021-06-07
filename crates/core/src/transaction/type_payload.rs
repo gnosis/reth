@@ -1,7 +1,7 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use super::{AccessListPayload, LegacyPayload, Transaction, TxType};
+use super::{AccessListPayload, LegacyPayload, Transaction, TxType, eip1559_payload::Eip1559Payload};
 use crate::Address;
 use rlp::{self, DecoderError, Rlp, RlpStream};
 
@@ -15,6 +15,7 @@ pub trait PayloadTrait {
 pub enum TypePayload {
     Legacy(LegacyPayload),
     AccessList(AccessListPayload),
+    Eip1559(Eip1559Payload),
 }
 
 impl TypePayload {
@@ -22,6 +23,7 @@ impl TypePayload {
         match self {
             Self::Legacy(_) => TxType::Legacy,
             Self::AccessList(_) => TxType::AccessList,
+            Self::Eip1559(_) => TxType::Eip1559,
         }
     }
 }
@@ -37,6 +39,7 @@ impl PayloadTrait for TypePayload {
         match tx.txtype() {
             TxType::Legacy => LegacyPayload::encode(tx, for_signature),
             TxType::AccessList => AccessListPayload::encode(tx, for_signature),
+            TxType::Eip1559 => Eip1559Payload::encode(tx, for_signature),
         }
     }
 
@@ -53,6 +56,7 @@ impl PayloadTrait for TypePayload {
                 .map_err(|_| DecoderError::Custom("Unknown transaction"))?;
             // other transaction types
             match id {
+                TxType::Eip1559 => Eip1559Payload::decode(input),
                 TxType::AccessList => AccessListPayload::decode(input),
                 TxType::Legacy => return Err(DecoderError::Custom("Unknown transaction legacy")),
             }

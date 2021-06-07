@@ -62,16 +62,22 @@ impl ByScore {
         self.pending_removal.len()
     }
 
-    pub fn recreate_heap(&mut self) {
+    pub fn recreate_heap(&mut self, base_fee: Option<U256>) {
         // we can use retain from BinaryHeap but it is currently experimental feature:
         // https://doc.rust-lang.org/std/collections/struct.BinaryHeap.html#method.retain
-        let fresh_tx: Vec<_> = mem::take(&mut self.sorting)
+        let mut fresh_tx: Vec<_> = mem::take(&mut self.sorting)
             .into_vec()
             .into_iter()
             .filter(|tx| !self.pending_removal.contains(&tx.hash()))
             .collect();
-
+        
         self.pending_removal.clear();
+
+        if let Some(ref base_fee) = base_fee {
+            for tx in fresh_tx.iter_mut() {
+                tx.score = tx.effective_gas_price(base_fee);
+            }
+        }
         self.sorting = BinaryHeap::from(fresh_tx);
     }
 
@@ -91,13 +97,8 @@ impl ScoreTransaction {
         self.tx.hash()
     }
 
-    pub fn new(tx: Arc<Transaction>) -> ScoreTransaction {
-        let score = match tx.type_payload {
-            // TODO effective_gas_price();
-            TypePayload::AccessList(ref al) => al.legacy_payload.gas_price,
-            TypePayload::Legacy(ref legacy) => legacy.gas_price,
-        };
-
+    pub fn new(tx: Arc<Transaction>,base_fee: &U256) -> ScoreTransaction {
+        let score = tx.effective_gas_price(base_fee);
         ScoreTransaction { tx: tx, score }
     }
 }

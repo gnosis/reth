@@ -12,7 +12,10 @@ use keccak_hash::keccak;
 use rlp::DecoderError;
 
 pub type ChainId = u64;
-use std::hash::{Hash, Hasher};
+use std::{
+    cmp::min,
+    hash::{Hash, Hasher},
+};
 
 /// A transaction (formally, T) is a
 /// single cryptographically-signed instruction constructed by
@@ -29,6 +32,8 @@ pub struct Transaction {
     pub nonce: U64,
     /// The maximum amount of gas to be used in while executing a transaction
     pub gas_limit: U256,
+    /// For eip1559 it is maximum price that this tx want to pay for unit of gas. For legacy tx this is price that tx wants to pay.
+    pub gas_price: U256,
     /// The 20-character recipient of a message call. In the case of a contract creation this is 0x000000000000000000
     pub to: CallType,
     /// The number of Wei to be transferred to the recipient of a message call.
@@ -36,6 +41,7 @@ pub struct Transaction {
     /// Byte array specifying the input data of the message call or
     /// for contract creation:  EVM-code for the account initialisation procedure
     pub data: Bytes,
+
     /// signature of transaction
     signature: Signature,
     /// hash of transaction
@@ -52,6 +58,7 @@ impl Transaction {
         hash: H256,
         nonce: U64,
         gas_limit: U256,
+        gas_price: U256,
         to: CallType,
         value: U256,
         data: Bytes,
@@ -64,18 +71,28 @@ impl Transaction {
             nonce,
             author: None,
             gas_limit,
+            gas_price,
             to,
             value,
             data,
         }
     }
 
-    pub fn cost(&self) -> U256 {
-        let gas_price = match self.type_payload {
-            TypePayload::AccessList(ref al) => al.legacy_payload.gas_price,
-            TypePayload::Legacy(ref legacy) => legacy.gas_price,
+    pub fn effective_gas_price(&self, base_fee: &U256) -> U256 {
+        match self.type_payload {
+            TypePayload::Eip1559(ref eip1559) => {
+                min(eip1559.max_priority_fee_per_gas + base_fee, self.gas_price)
+            }
+            _ => self.gas_price,
+        }
+    }
+
+    pub fn max_cost(&self) -> U256 {
+        let max_gas_price = match self.type_payload {
+            TypePayload::Eip1559(ref eip1559) => eip1559.max_priority_fee_per_gas,
+            _ => self.gas_price,
         };
-        self.gas_limit * gas_price + self.value
+        self.gas_limit * max_gas_price + self.value
     }
 
     pub fn sign(&mut self, secret: &Secret) {
@@ -260,9 +277,8 @@ mod tests {
 
     fn null_signed_dummy_legacy_tx() -> Transaction {
         let tx = Transaction {
-            type_payload: TypePayload::Legacy(LegacyPayload {
-                gas_price: 15.into(),
-            }),
+            type_payload: TypePayload::Legacy(LegacyPayload {}),
+            gas_price: 15.into(),
             nonce: 10.into(),
             gas_limit: 20.into(),
             to: CallType::CallMessage(Address::from_low_u64_be(30)),
@@ -279,9 +295,6 @@ mod tests {
 
     fn null_signed_dummy_access_list_tx() -> Transaction {
         let type_payload = TypePayload::AccessList(AccessListPayload {
-            legacy_payload: LegacyPayload {
-                gas_price: U256::from(10),
-            },
             access_list: vec![AccessListItem::new(
                 Address::from_low_u64_be(10),
                 vec![H256::from_low_u64_be(30), H256::from_low_u64_be(500)],
@@ -292,6 +305,7 @@ mod tests {
             type_payload,
             nonce: 100.into(),
             gas_limit: 200.into(),
+            gas_price: U256::from(10),
             to: CallType::CallMessage(Address::from_low_u64_be(300)),
             value: 500.into(),
             data: vec![0x11, 0x22, 0x33, 0x44, 0x55],
@@ -323,12 +337,11 @@ mod tests {
         let keypair = crypto::publickey::Random.generate();
 
         let mut tx = Transaction {
-            type_payload: TypePayload::Legacy(LegacyPayload {
-                gas_price: U256::from(4000),
-            }),
+            type_payload: TypePayload::Legacy(LegacyPayload {}),
             to: CallType::CreateContract(),
             nonce: U64::from(42),
             gas_limit: U256::from(60_000),
+            gas_price: U256::from(4000),
             value: U256::from(10),
             data: b"Hello World!".to_vec(),
             signature: Signature::default(),
@@ -351,12 +364,11 @@ mod tests {
         let keypair = crypto::publickey::Random.generate();
 
         let mut tx = Transaction {
-            type_payload: TypePayload::Legacy(LegacyPayload {
-                gas_price: U256::from(4000),
-            }),
+            type_payload: TypePayload::Legacy(LegacyPayload {}),
             to: CallType::CreateContract(),
             nonce: U64::from(42),
             gas_limit: U256::from(60_000),
+            gas_price: U256::from(4000),
             value: U256::from(10),
             data: b"Hello World!".to_vec(),
             signature: Signature::default(),
@@ -378,9 +390,6 @@ mod tests {
         let keypair = crypto::publickey::Random.generate();
 
         let type_payload = TypePayload::AccessList(AccessListPayload {
-            legacy_payload: LegacyPayload {
-                gas_price: U256::from(10),
-            },
             access_list: vec![AccessListItem::new(
                 Address::from_low_u64_be(10),
                 vec![H256::from_low_u64_be(30), H256::from_low_u64_be(500)],
@@ -391,6 +400,7 @@ mod tests {
             to: CallType::CreateContract(),
             nonce: U64::from(42),
             gas_limit: U256::from(60_000),
+            gas_price: U256::from(10),
             value: U256::from(10),
             data: b"Hello World!".to_vec(),
             signature: Signature::default(),
@@ -437,6 +447,7 @@ mod tests {
                 .unwrap()
         );
         assert_eq!(tx.gas_limit, U256::from_str("f4240").unwrap());
+        assert_eq!(tx.gas_price, U256::from_str("28fa6ae00").unwrap());
         assert_eq!(tx.nonce, U64::from_str("12b0").unwrap());
         assert_eq!(tx.author().unwrap().1, Public::from_str("695ee214d90789c0ff826ff97a7139b8f309a84336a5e6b136c8a0702a86e624b98aa17f3611e5c22cc0c792c578be40854a7ce60d5bdfe1b1fc175a4c74c5ea").unwrap());
         assert_eq!(
@@ -445,11 +456,7 @@ mod tests {
                 .from_hex::<Vec<u8>>()
                 .unwrap()
         );
-        if let TypePayload::Legacy(LegacyPayload { gas_price }) = tx.type_payload {
-            assert_eq!(gas_price, U256::from_str("28fa6ae00").unwrap())
-        } else {
-            panic!("it is not legacy");
-        }
+        assert_eq!(tx.type_payload.txtype(), TxType::Legacy);
         let t = CallType::CallMessage(
             H160::from_str("aad593da0c8116ef7d2d594dd6a63241bccfc26c").unwrap(),
         );
@@ -489,15 +496,8 @@ mod tests {
         assert_eq!(tx.gas_limit, U256::from_str("186a0").unwrap());
         assert_eq!(tx.nonce, U64::from_str("2").unwrap());
         assert_eq!(tx.data, vec![]);
-        if let TypePayload::AccessList(AccessListPayload {
-            legacy_payload,
-            access_list,
-        }) = tx.type_payload
-        {
-            assert_eq!(
-                legacy_payload.gas_price,
-                U256::from_str("3b9aca00").unwrap()
-            );
+        if let TypePayload::AccessList(AccessListPayload { access_list }) = tx.type_payload {
+            assert_eq!(tx.gas_price, U256::from_str("3b9aca00").unwrap());
             assert_eq!(access_list.len(), 1);
             let ref item = access_list[0];
             assert_eq!(item.storage_keys().len(), 2);

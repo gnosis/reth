@@ -12,10 +12,7 @@ use rlp::{self, DecoderError, Rlp, RlpStream};
 
 /// Field used in legacy transaction
 #[derive(Debug, Clone, Default)]
-pub struct LegacyPayload {
-    /// The number of Wei to pay the network for unit of gas.
-    pub gas_price: U256,
-}
+pub struct LegacyPayload {}
 
 impl PayloadTrait for LegacyPayload {
     fn encode(tx: &Transaction, for_signature: bool) -> Vec<u8> {
@@ -27,7 +24,7 @@ impl PayloadTrait for LegacyPayload {
         rlp.begin_unbounded_list();
 
         rlp.append(&tx.nonce);
-        rlp.append(&data.gas_price);
+        rlp.append(&tx.gas_price);
         rlp.append(&tx.gas_limit);
         rlp.append(&tx.to);
         rlp.append(&tx.value);
@@ -66,12 +63,13 @@ impl PayloadTrait for LegacyPayload {
         let chain_id = replay_protection::decode_chain_id(mixed_v);
 
         Ok(Transaction::new(
-            TypePayload::Legacy(LegacyPayload { gas_price }),
+            TypePayload::Legacy(LegacyPayload {}),
             signature,
             chain_id,
             keccak(input),
             nonce,
             gas_limit,
+            gas_price,
             to,
             value,
             data,

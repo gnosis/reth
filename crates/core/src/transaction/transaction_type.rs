@@ -6,6 +6,7 @@ use ethereum_types::U64;
 #[derive(Debug, Copy, Clone, PartialEq)]
 #[repr(u8)]
 pub enum TxType {
+    Eip1559 = 0x02,
     AccessList = 0x01,
     Legacy = 0x00,
 }

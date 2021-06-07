@@ -59,8 +59,8 @@ impl Account {
         // check if we have enought gas for new tx
         let balance = self.transactions[0..insert_index]
             .iter()
-            .fold(self.info.balance, |acum, tx| acum.saturating_sub(tx.cost()));
-        if tx.cost() > balance {
+            .fold(self.info.balance, |acum, tx| acum.saturating_sub(tx.max_cost()));
+        if tx.max_cost() > balance {
             return Err(Error::NotInsertedBalanceInsufficient.into());
         }
 
@@ -107,7 +107,7 @@ impl Account {
         // if there is not enought gas for those transactions remove them.
         let mut left_balance = balance;
         for tx in self.transactions[insert_index..].iter() {
-            let cost = tx.cost();
+            let cost = tx.max_cost();
             if cost > left_balance {
                 unsuficient_fund.push(tx.clone());
             }
