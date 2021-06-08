@@ -9,23 +9,35 @@ use grpc_interfaces::{
 use interfaces::txpool::TransactionPool;
 use prost::bytes::Bytes;
 use reth_core::*;
-use rlp::DecoderError;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 use txpool::Pool;
 
-use crate::announcer::AnnouncerImpl;
+use reth_core::Transaction;
+use tokio::sync::{mpsc::Sender, RwLock};
+use txpool::{Announcer, Error};
 
 pub struct GrpcPool {
     pool: Arc<Pool>,
-    announcer: Arc<AnnouncerImpl>,
+    announcer: Arc<GrpcAnnouncer>,
+}
+
+pub struct GrpcAnnouncer {
+    subscribers: RwLock<Vec<Sender<Result<OnAddReply, Status>>>>,
 }
 
 impl GrpcPool {
-    pub fn new(pool: Arc<Pool>, announcer: Arc<AnnouncerImpl>) -> Self {
-        Self { pool, announcer }
+    pub fn new(pool: Arc<Pool>) -> Self {
+        Self {
+            pool,
+            announcer: Arc::new(GrpcAnnouncer::new()),
+        }
+    }
+
+    pub fn announcer(&self) -> Arc<dyn Announcer> {
+        self.announcer.clone()
     }
 }
 
@@ -115,4 +127,47 @@ impl Txpool for GrpcPool {
 
         Ok(Response::new(ReceiverStream::new(rx)))
     }
+}
+
+/// It is currently simplified announcer.
+
+impl GrpcAnnouncer {
+    pub fn new() -> Self {
+        Self {
+            subscribers: RwLock::new(Vec::new()),
+        }
+    }
+
+    pub async fn subscribe(&self, sub: Sender<Result<OnAddReply, Status>>) {
+        self.subscribers.write().await.push(sub);
+    }
+}
+
+#[async_trait]
+impl Announcer for GrpcAnnouncer {
+    async fn inserted(&self, tx: Arc<Transaction>) {
+        let mut subs = self.subscribers.write().await;
+        let mut rem = Vec::new();
+        for (i, sub) in subs.iter().enumerate() {
+            if sub
+                .send(Ok(OnAddReply {
+                    rpl_txs: vec![tx.encode().into()],
+                }))
+                .await
+                .is_err()
+            {
+                rem.push(i);
+            }
+        }
+        //to remove
+        if !rem.is_empty() {
+            for (i, rem) in rem.into_iter().enumerate() {
+                subs.remove(rem - i);
+            }
+        }
+    }
+
+    async fn reinserted(&self, _tx: Arc<Transaction>) {}
+
+    async fn removed(&self, _tx: Arc<Transaction>, _error: Error) {}
 }

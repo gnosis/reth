@@ -7,9 +7,8 @@ use reth_core::{Address, Transaction, H256, U256};
 use std::{
     collections::{
         hash_map::{Entry, Iter},
-        BinaryHeap, HashMap, HashSet,
+        BinaryHeap, HashMap,
     },
-    mem,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -245,7 +244,7 @@ impl Transactions {
     ) -> (
         BinaryHeap<ScoreTransaction>,
         HashMap<Address, AccountInfo>,
-        H256,
+        BlockInfo,
     ) {
         self.by_score.recreate_heap(None);
         let binary_heap = self.by_score.clone_heap();
@@ -256,7 +255,7 @@ impl Transactions {
             infos.insert(*address, acc.info().clone());
         }
 
-        (binary_heap, infos, self.block.hash)
+        (binary_heap, infos, self.block)
     }
 
     /// update block with new account state and reinsert transaction from reverted block

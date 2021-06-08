@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::{Error, BUMP_SCORE_BY_12_5_PERC};
 use super::score::ScoreTransaction;
+use crate::{Error, BUMP_SCORE_BY_12_5_PERC};
 use anyhow::Result;
 use interfaces::world_state::AccountInfo;
 use reth_core::{Transaction, H256};
@@ -59,7 +59,9 @@ impl Account {
         // check if we have enought gas for new tx
         let balance = self.transactions[0..insert_index]
             .iter()
-            .fold(self.info.balance, |acum, tx| acum.saturating_sub(tx.max_cost()));
+            .fold(self.info.balance, |acum, tx| {
+                acum.saturating_sub(tx.max_cost())
+            });
         if tx.max_cost() > balance {
             return Err(Error::NotInsertedBalanceInsufficient.into());
         }

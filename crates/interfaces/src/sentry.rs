@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use reth_core::H512;
 use bytes::Bytes;
+use reth_core::H512;
 
 pub type PeerId = H512;
 
@@ -9,8 +9,6 @@ pub trait Sentry: Send + Sync {
     async fn send_message_by_id(&self, peer_id: PeerId, message_id: TxMessage, data: Bytes);
     //TODO add other functions that mimic grpc interface
 }
-
-
 
 pub enum TxMessage {
     NewPooledTransactionHashes,

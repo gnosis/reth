@@ -76,13 +76,16 @@ impl Pool {
     }
 
     /// Get transaction for pending blocks
-    pub async fn new_pending_block(&self) -> (Vec<Arc<Transaction>>, H256) {
+    pub async fn new_pending_block(&self) -> (Vec<Arc<Transaction>>, BlockInfo) {
         //iterate over sorted tx to create new pending block tx
-        let (binary_heap, infos, parent_hash) = self.txs.write().binary_heap_and_accounts();
+        let (binary_heap, infos, block) = self.txs.write().binary_heap_and_accounts();
         let sorted = binary_heap.into_sorted_vec();
         let mut out = Vec::new();
         let mut nonces: HashMap<Address, u64> = HashMap::new();
         for tx in sorted.into_iter().rev() {
+            if tx.score >= block.base_fee {
+                break;
+            }
             let author = tx
                 .author()
                 .expect("Every inserted transaction has check if author is set")
@@ -103,7 +106,7 @@ impl Pool {
         // and tx1 has better score then tx0, that would mean that when iterating we are going to skip tx1
         // and include only tx0. Should we tranverse back and try to include tx1 again?
         // edge case: if including tx1 removes some tx from pending block (or even removes tx0 ).
-        (out, parent_hash)
+        (out, block)
     }
 }
 
@@ -217,8 +220,7 @@ impl TransactionPool for Pool {
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod tests {
-    use super::super::announcer::test::AnnouncerTest;
-    use super::*;
+    use super::{super::announcer::test::AnnouncerTest, *};
     use interfaces::world_state::helper::WorldStateTest;
 
     #[tokio::test]

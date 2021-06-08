@@ -1,7 +1,7 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-use reth_core::{transaction::TypePayload, Transaction, H256, U256};
+use reth_core::{Transaction, H256, U256};
 use std::{
     cmp,
     collections::{BinaryHeap, HashSet},
@@ -70,7 +70,7 @@ impl ByScore {
             .into_iter()
             .filter(|tx| !self.pending_removal.contains(&tx.hash()))
             .collect();
-        
+
         self.pending_removal.clear();
 
         if let Some(ref base_fee) = base_fee {
@@ -97,7 +97,7 @@ impl ScoreTransaction {
         self.tx.hash()
     }
 
-    pub fn new(tx: Arc<Transaction>,base_fee: &U256) -> ScoreTransaction {
+    pub fn new(tx: Arc<Transaction>, base_fee: &U256) -> ScoreTransaction {
         let score = tx.effective_gas_price(base_fee);
         ScoreTransaction { tx: tx, score }
     }

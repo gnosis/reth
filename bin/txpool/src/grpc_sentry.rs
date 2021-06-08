@@ -8,7 +8,7 @@ use interfaces::sentry::{PeerId, Sentry, TxMessage};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tonic::{transport::Channel, Request};
-use txpool::{Peers, Pool};
+use txpool::Peers;
 
 pub struct GrpcSentry {
     client: Mutex<SentryClient<Channel>>,
@@ -79,7 +79,6 @@ impl GrpcSentry {
                         .inbound(&msg.peer_id.unwrap().into(), id, msg.data)
                         .await;
                 }
-                Some(_) => {}
                 None => {}
             }
         }

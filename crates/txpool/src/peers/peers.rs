@@ -20,8 +20,6 @@ use tokio::{
     task::JoinHandle,
 };
 
-pub const MAX_KNOWN_TX: usize = 1024;
-
 pub type PeerId = H512;
 
 type PeerHandle = (UnboundedSender<PeerMsg>, JoinHandle<()>);

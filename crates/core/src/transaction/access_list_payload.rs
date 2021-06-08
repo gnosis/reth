@@ -113,9 +113,7 @@ impl PayloadTrait for AccessListPayload {
 
         // and here we create UnverifiedTransaction and calculate its hash
         Ok(Transaction::new(
-            TypePayload::AccessList(AccessListPayload {
-                access_list,
-            }),
+            TypePayload::AccessList(AccessListPayload { access_list }),
             signature,
             chain_id,
             keccak(input),

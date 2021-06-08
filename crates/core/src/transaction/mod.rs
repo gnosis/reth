@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 pub mod access_list_payload;
+pub mod eip1559_payload;
 pub mod legacy_payload;
 pub mod signature;
 pub mod transaction;
 pub mod transaction_type;
 pub mod type_payload;
-pub mod eip1559_payload;
 
 pub use access_list_payload::AccessListPayload;
 pub use legacy_payload::LegacyPayload;

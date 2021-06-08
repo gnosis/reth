@@ -2,23 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use clap::Clap;
-use grpc_interfaces::txpool::txpool_server::{Txpool, TxpoolServer};
-use interfaces::world_state::WorldState;
+use grpc_interfaces::txpool::txpool_server::TxpoolServer;
 use log::*;
 use std::sync::Arc;
 use toml;
 use tonic::transport::Server;
-use txpool::{Peers, Pool};
+use txpool::{MultiAnnouncer, Peers, Pool};
 
 use crate::{
-    announcer::AnnouncerImpl,
     config::{Opts, *},
     grpc_sentry::GrpcSentry,
     grpc_txpool::GrpcPool,
     grpc_world_state::GrpcWorldState,
 };
 
-mod announcer;
 mod config;
 mod grpc_sentry;
 mod grpc_txpool;
@@ -47,7 +44,13 @@ pub async fn configure() -> Config {
 
 pub async fn init(
     config: Arc<Config>,
-) -> (Arc<GrpcSentry>, Arc<Peers>, Arc<Pool>, GrpcPool, Arc<GrpcWorldState>) {
+) -> (
+    Arc<GrpcSentry>,
+    Arc<Peers>,
+    Arc<Pool>,
+    GrpcPool,
+    Arc<GrpcWorldState>,
+) {
     let world_state =
         Arc::new(GrpcWorldState::new(config.world_state.as_ref().unwrap().clone()).await);
     let sentry = Arc::new(GrpcSentry::new(config.sentry.as_ref().unwrap().clone()).await);
@@ -56,14 +59,19 @@ pub async fn init(
     let config: Arc<txpool::Config> = Arc::new(config.as_ref().clone().into());
 
     // announcer for inclusion and removed of tx. Used in GrpcTxPool
-    let annon = Arc::new(AnnouncerImpl::new());
+    let multi_annon = Arc::new(MultiAnnouncer::new());
 
-    //Create objects
-    let pool = Arc::new(Pool::new(config, world_state.clone(), annon.clone()));
+    // create pool
+    let pool = Arc::new(Pool::new(config, world_state.clone(), multi_annon.clone()));
 
+    // create peers
     let peers = Peers::new(sentry.clone(), pool.clone());
+    multi_annon.add(peers.clone());
 
-    let pool_server = GrpcPool::new(pool.clone(), annon.clone());
+    // create grpc pool server
+    let pool_server = GrpcPool::new(pool.clone());
+    multi_annon.add(pool_server.announcer());
+
     (sentry, peers, pool, pool_server, world_state)
 }
 

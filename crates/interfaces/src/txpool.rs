@@ -5,11 +5,11 @@ use std::sync::Arc;
 
 use super::world_state::BlockUpdate;
 use async_trait::async_trait;
-use reth_core::{H256, Transaction};
+use reth_core::{Transaction, H256};
 
 /// Trait that allows getting blocks data
 #[async_trait]
-pub trait TransactionPool: Send+Sync {
+pub trait TransactionPool: Send + Sync {
     /// preserves incoming order, changes amount, unknown hashes will be omitted
     async fn filter_by_negative(&self, hashes: &[H256]) -> Vec<H256>;
     /// preserves incoming order and amount

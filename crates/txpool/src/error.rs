@@ -1,9 +1,9 @@
 // Copyright 2021 Gnosis Ltd.
 // SPDX-License-Identifier: Apache-2.0
-use thiserror::Error;
 use rlp::DecoderError;
+use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum Error {
     #[error("Transaction not inserted. Limit tx per account reached.")]
     NotInsertedTxPerAccountFull,
